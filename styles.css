@@ -208,3 +208,50 @@
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
+
+/* Toolbar row: scope tabs left, view toggle right */
+.thino-files-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-2-3);
+  margin-bottom: var(--size-2-3);
+}
+
+.thino-files-toolbar .thino-files-scopebar {
+  margin-bottom: 0;
+}
+
+.thino-files-viewtoggle {
+  display: flex;
+  gap: var(--size-2-1);
+}
+
+.thino-files-viewtoggle-btn.is-active {
+  color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+
+/* Folder view groups */
+.thino-files-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  padding: var(--size-2-2) 0;
+  cursor: pointer;
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.thino-files-group-chevron {
+  display: flex;
+  align-items: center;
+}
+
+.thino-files-group-count {
+  font-size: var(--font-ui-smaller);
+  background: var(--background-secondary);
+  border-radius: var(--radius-s);
+  padding: 0 var(--size-2-2);
+}

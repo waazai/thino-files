@@ -220,15 +220,15 @@ export interface ListableVault {
   cachedRead(file: { path: string }): Promise<string>;
 }
 
-/** True when `path` is a direct child of `folder` (no deeper nesting). */
-export function isDirectChild(folder: string, path: string): boolean {
-  if (!path.startsWith(`${folder}/`)) return false;
-  return !path.slice(folder.length + 1).includes("/");
+/** True when `path` lives anywhere under `folder` (any depth, AC §D.2). */
+export function isWithinFolder(folder: string, path: string): boolean {
+  return path.startsWith(`${folder}/`);
 }
 
 /**
  * True when a vault event for `path` (or a rename from `oldPath`) touches a
- * direct-child .md of the posts folder — the watcher's refresh predicate.
+ * .md anywhere under the posts folder — the watcher's refresh predicate.
+ * An empty folder setting still means vault root only (never the whole vault).
  */
 export function affectsFolder(
   folder: string,
@@ -236,22 +236,24 @@ export function affectsFolder(
   oldPath?: string
 ): boolean {
   const hits = (p: string): boolean =>
-    p.endsWith(".md") && (folder ? isDirectChild(folder, p) : !p.includes("/"));
+    p.endsWith(".md") && (folder ? isWithinFolder(folder, p) : !p.includes("/"));
   return hits(path) || (oldPath !== undefined && hits(oldPath));
 }
 
 /**
- * Read every direct-child .md of the configured folder, parse frontmatter,
- * sort by `date` descending (frontmatter-less files last).
+ * Read every .md under the configured folder (recursive, assets folder
+ * excluded), parse frontmatter, sort by `date` descending.
  */
 export async function listPosts(
   vault: ListableVault,
   settings: ThinoFilesSettings
 ): Promise<Post[]> {
   const folder = normalizeFolder(settings.postsFolder);
+  const assets = normalizeFolder(settings.assetsFolder);
   const files = vault
     .getMarkdownFiles()
-    .filter((f) => (folder ? isDirectChild(folder, f.path) : !f.path.includes("/")));
+    .filter((f) => (folder ? isWithinFolder(folder, f.path) : !f.path.includes("/")))
+    .filter((f) => !assets || !isWithinFolder(assets, f.path));
   const posts = await Promise.all(
     files.map(async (f): Promise<Post> => {
       const raw = await vault.cachedRead(f);
@@ -265,4 +267,33 @@ export async function listPosts(
     if (!b.date) return -1;
     return b.date.localeCompare(a.date);
   });
+}
+
+export interface PostGroup {
+  name: string;
+  posts: Post[];
+}
+
+/**
+ * Folder-view grouping (AC §D.3): key = first path segment under the posts
+ * folder; direct children fall under the posts folder's own name. Groups are
+ * alphabetical; post order within a group is preserved from the input.
+ */
+export function groupByFolder(posts: Post[], postsFolder: string): PostGroup[] {
+  const folder = normalizeFolder(postsFolder);
+  const rootName = folder ? folder.split("/").pop()! : "/";
+  const byName = new Map<string, Post[]>();
+  for (const post of posts) {
+    const rel = folder && isWithinFolder(folder, post.path)
+      ? post.path.slice(folder.length + 1)
+      : post.path;
+    const slash = rel.indexOf("/");
+    const name = slash === -1 ? rootName : rel.slice(0, slash);
+    let group = byName.get(name);
+    if (!group) byName.set(name, (group = []));
+    group.push(post);
+  }
+  return [...byName.entries()]
+    .map(([name, groupPosts]) => ({ name, posts: groupPosts }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }

@@ -34,13 +34,13 @@ describe("listPosts", () => {
     ]);
   });
 
-  it("ignores files in subfolders of the posts folder", async () => {
+  it("includes files in subfolders of the posts folder (AC §D.2)", async () => {
     const vault = fakeVault({
       "thino/2026-06-12-a.md": post("2026-06-12T01:00:00", "a"),
       "thino/sub/2026-06-12-b.md": post("2026-06-12T02:00:00", "b"),
     });
     const posts = await listPosts(vault, DEFAULT_SETTINGS);
-    expect(posts.map((p) => p.body)).toEqual(["a"]);
+    expect(posts.map((p) => p.body)).toEqual(["b", "a"]);
   });
 
   it("parses tags and updated from frontmatter", async () => {

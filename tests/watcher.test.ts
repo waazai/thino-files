@@ -6,9 +6,9 @@ describe("affectsFolder", () => {
     expect(affectsFolder("thino", "thino/2026-06-12-a.md")).toBe(true);
   });
 
-  it("ignores other folders and nested subfolders", () => {
+  it("ignores other folders but matches nested subfolders (AC §D.2)", () => {
     expect(affectsFolder("thino", "daily/2026-06-12.md")).toBe(false);
-    expect(affectsFolder("thino", "thino/sub/x.md")).toBe(false);
+    expect(affectsFolder("thino", "thino/sub/x.md")).toBe(true);
     expect(affectsFolder("thino", "thino-archive/x.md")).toBe(false);
   });
 

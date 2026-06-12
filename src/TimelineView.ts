@@ -1,9 +1,18 @@
-import { debounce, ItemView, type TAbstractFile, TFile, type Vault, WorkspaceLeaf } from "obsidian";
+import {
+  debounce,
+  ItemView,
+  setIcon,
+  type TAbstractFile,
+  TFile,
+  type Vault,
+  WorkspaceLeaf,
+} from "obsidian";
 import { Composer } from "./Composer";
 import {
   affectsFolder,
   createPost,
   deletePost,
+  groupByFolder,
   listPosts,
   normalizeFolder,
   setPostFlags,
@@ -13,16 +22,19 @@ import { FilterBar } from "./FilterBar";
 import { matchPost, matchScope, parseQuery, type PostQuery, type PostScope } from "./filter";
 import type ThinoFilesPlugin from "./main";
 import { PostCard } from "./PostCard";
-import type { Post } from "./types";
+import type { Post, ViewMode } from "./types";
 
 export const VIEW_TYPE_THINO_FILES = "thino-files-timeline";
 
 export class TimelineView extends ItemView {
   private listEl!: HTMLElement;
   private listScopeBarEl!: HTMLElement;
+  private viewToggleEl!: HTMLElement;
   private posts: Post[] = [];
   private query: PostQuery = parseQuery("");
   private listScope: PostScope = "timeline";
+  /** Session-only collapsed state of folder-view groups (AC §D.3). */
+  private collapsedGroups = new Set<string>();
 
   constructor(leaf: WorkspaceLeaf, private plugin: ThinoFilesPlugin) {
     super(leaf);
@@ -56,7 +68,10 @@ export class TimelineView extends ItemView {
       await this.refresh();
     });
 
-    this.listScopeBarEl = container.createDiv({ cls: "thino-files-scopebar" });
+    const toolbar = container.createDiv({ cls: "thino-files-toolbar" });
+    this.listScopeBarEl = toolbar.createDiv({ cls: "thino-files-scopebar" });
+    this.viewToggleEl = toolbar.createDiv({ cls: "thino-files-viewtoggle" });
+    this.renderViewToggle();
 
     new FilterBar(container, (query) => {
       this.query = query;
@@ -111,6 +126,30 @@ export class TimelineView extends ItemView {
     }
   }
 
+  /** Timeline ⇄ folders segmented toggle; the choice persists (AC §D.1). */
+  private renderViewToggle(): void {
+    this.viewToggleEl.empty();
+    const modes: { mode: ViewMode; icon: string; label: string }[] = [
+      { mode: "timeline", icon: "list", label: "Timeline view" },
+      { mode: "folders", icon: "folder", label: "Folder view" },
+    ];
+    for (const { mode, icon, label } of modes) {
+      const btn = this.viewToggleEl.createEl("button", {
+        cls: "thino-files-viewtoggle-btn clickable-icon",
+        attr: { "aria-label": label, title: label },
+      });
+      setIcon(btn, icon);
+      btn.toggleClass("is-active", this.plugin.settings.viewMode === mode);
+      btn.addEventListener("click", () => {
+        if (this.plugin.settings.viewMode === mode) return;
+        this.plugin.settings.viewMode = mode;
+        void this.plugin.saveSettings();
+        this.renderViewToggle();
+        this.renderList();
+      });
+    }
+  }
+
   private renderList(): void {
     this.listEl.empty();
     const inScope = this.posts.filter((p) => matchScope(p, this.listScope));
@@ -126,13 +165,52 @@ export class TimelineView extends ItemView {
       });
       return;
     }
+    if (this.plugin.settings.viewMode === "folders") {
+      this.renderGroups(visible);
+      return;
+    }
     for (const post of visible) {
-      this.createCard(post);
+      this.createCard(post, this.listEl);
     }
   }
 
-  private createCard(post: Post): PostCard {
-    return new PostCard(this.listEl, post, {
+  /** Folder view: collapsible group per subfolder, post counts (AC §D.3). */
+  private renderGroups(visible: Post[]): void {
+    const folder = normalizeFolder(this.plugin.settings.postsFolder);
+    for (const group of groupByFolder(visible, folder)) {
+      const groupEl = this.listEl.createDiv({ cls: "thino-files-group" });
+      const headerEl = groupEl.createDiv({ cls: "thino-files-group-header" });
+      const chevron = headerEl.createSpan({ cls: "thino-files-group-chevron" });
+      headerEl.createSpan({ cls: "thino-files-group-name", text: group.name });
+      headerEl.createSpan({
+        cls: "thino-files-group-count",
+        text: String(group.posts.length),
+      });
+      const bodyEl = groupEl.createDiv({ cls: "thino-files-group-body" });
+
+      const apply = (): void => {
+        const collapsed = this.collapsedGroups.has(group.name);
+        setIcon(chevron, collapsed ? "chevron-right" : "chevron-down");
+        bodyEl.toggle(!collapsed);
+      };
+      headerEl.addEventListener("click", () => {
+        if (this.collapsedGroups.has(group.name)) {
+          this.collapsedGroups.delete(group.name);
+        } else {
+          this.collapsedGroups.add(group.name);
+        }
+        apply();
+      });
+
+      for (const post of group.posts) {
+        this.createCard(post, bodyEl);
+      }
+      apply();
+    }
+  }
+
+  private createCard(post: Post, parent: HTMLElement): PostCard {
+    return new PostCard(parent, post, {
       app: this.app,
       settings: this.plugin.settings,
       component: this,

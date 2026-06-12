@@ -15,13 +15,13 @@ Source: [plan.md](plan.md) · [SPEC.md](../SPEC.md)
 
 ## T2 — Recursive listing + folder view (SPEC §2.D)
 
-- [ ] `fileManager.ts`: `isWithinFolder`, recursive `listPosts` excluding `assetsFolder`, recursive `affectsFolder` (AC D.2)
-- [ ] `types.ts`: `assetsFolder` (default `thino/assets`) + `viewMode` settings keys
-- [ ] `groupByFolder(posts, postsFolder)` pure — groups alpha-sorted, posts newest-first (AC D.3)
-- [ ] `TimelineView.ts`: header timeline⇄folders toggle (persisted), collapsible group headers with counts (AC D.1, D.3)
-- [ ] Filter bar + scope apply in both modes (AC D.4)
-- [ ] Tests: recursive listing, assets exclusion, `affectsFolder`, `groupByFolder`
-- [ ] **Checkpoint 2**: tests + build green; subfolder posts visible; toggle persists
+- [x] `fileManager.ts`: `isWithinFolder`, recursive `listPosts` excluding `assetsFolder`, recursive `affectsFolder` (AC D.2)
+- [x] `types.ts`: `assetsFolder` (default `thino/assets`) + `viewMode` settings keys
+- [x] `groupByFolder(posts, postsFolder)` pure — groups alpha-sorted, posts newest-first (AC D.3)
+- [x] `TimelineView.ts`: header timeline⇄folders toggle (persisted), collapsible group headers with counts (AC D.1, D.3)
+- [x] Filter bar + scope apply in both modes (AC D.4)
+- [x] Tests: recursive listing, assets exclusion, `affectsFolder`, `groupByFolder`
+- [x] **Checkpoint 2**: tests + build green; subfolder posts visible; toggle persists
 
 ## T3 — Sidebar: status, heatmap, calendar (SPEC §2.A)
 
