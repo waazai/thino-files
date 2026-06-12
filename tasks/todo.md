@@ -25,12 +25,12 @@ Source: [plan.md](plan.md) · [SPEC.md](../SPEC.md)
 
 ## T3 — Sidebar: status, heatmap, calendar (SPEC §2.A)
 
-- [ ] `stats.ts` (new, pure): `postsPerDay`, `computeStatus`, `heatmapCells` (7×12, buckets 0/1–2/3–4/5+), `calendarGrid` (AC A.2, A.3)
-- [ ] `Sidebar.ts` (new): status block, heatmap with tooltips, month calendar with ‹ › nav + day select, scope switcher with counts (moved from T1 strip) (AC A.2–A.4)
-- [ ] `TimelineView.ts`: two-column layout; day filter composes AND with filter bar; sidebar refresh on `refresh()`; collapse toggle + narrow auto-collapse (AC A.1, A.4, A.5)
-- [ ] `styles.css`: layout, heatmap, calendar, narrow rules
-- [ ] Tests: stats counters, bucketing, calendar month edges (Dec/Jan rollover, leap Feb)
-- [ ] **Checkpoint 3**: tests + build green; day click filters and composes with `#tag`
+- [x] `stats.ts` (new, pure): `postsPerDay`, `computeStatus`, `heatmapCells` (7×12, buckets 0/1–2/3–4/5+), `calendarGrid` (AC A.2, A.3)
+- [x] `Sidebar.ts` (new): status block, heatmap with tooltips, month calendar with ‹ › nav + day select, scope switcher with counts (moved from T1 strip) (AC A.2–A.4)
+- [x] `TimelineView.ts`: two-column layout; day filter composes AND with filter bar; sidebar refresh on `refresh()`; collapse toggle + narrow auto-collapse (AC A.1, A.4, A.5)
+- [x] `styles.css`: layout, heatmap, calendar, narrow rules
+- [x] Tests: stats counters, bucketing, calendar month edges (Dec/Jan rollover, leap Feb)
+- [x] **Checkpoint 3**: tests + build green; day click filters and composes with `#tag`
 
 ## T4 — Media attachments (SPEC §2.B)
 

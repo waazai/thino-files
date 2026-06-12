@@ -22,17 +22,25 @@ import { FilterBar } from "./FilterBar";
 import { matchPost, matchScope, parseQuery, type PostQuery, type PostScope } from "./filter";
 import type ThinoFilesPlugin from "./main";
 import { PostCard } from "./PostCard";
+import { Sidebar } from "./Sidebar";
 import type { Post, ViewMode } from "./types";
+
+/** Container width (px) under which the sidebar auto-collapses (AC §A.1). */
+const NARROW_WIDTH = 600;
 
 export const VIEW_TYPE_THINO_FILES = "thino-files-timeline";
 
 export class TimelineView extends ItemView {
+  private layoutEl!: HTMLElement;
   private listEl!: HTMLElement;
-  private listScopeBarEl!: HTMLElement;
   private viewToggleEl!: HTMLElement;
+  private sidebar!: Sidebar;
   private posts: Post[] = [];
   private query: PostQuery = parseQuery("");
   private listScope: PostScope = "timeline";
+  /** Calendar day filter (YYYY-MM-DD), ANDed with the filter bar (AC §A.4). */
+  private selectedDay: string | null = null;
+  private sidebarHidden = false;
   /** Session-only collapsed state of folder-view groups (AC §D.3). */
   private collapsedGroups = new Set<string>();
 
@@ -61,26 +69,67 @@ export class TimelineView extends ItemView {
     container.empty();
     container.addClass("thino-files-view");
 
-    new Composer(container, async (input) => {
+    this.layoutEl = container.createDiv({ cls: "thino-files-layout" });
+    this.sidebar = new Sidebar(this.layoutEl, {
+      onScopeChange: (scope) => {
+        this.listScope = scope;
+        this.sidebar.update(this.posts, this.listScope);
+        this.renderList();
+      },
+      onDaySelect: (day) => {
+        this.selectedDay = day;
+        this.renderList();
+      },
+    });
+    const main = this.layoutEl.createDiv({ cls: "thino-files-main" });
+
+    new Composer(main, async (input) => {
       await createPost(this.vault, this.plugin.settings, input);
       // Refresh immediately so the new post appears at the top without
       // waiting for the file watcher (AC §2.1).
       await this.refresh();
     });
 
-    const toolbar = container.createDiv({ cls: "thino-files-toolbar" });
-    this.listScopeBarEl = toolbar.createDiv({ cls: "thino-files-scopebar" });
+    const toolbar = main.createDiv({ cls: "thino-files-toolbar" });
+    const sidebarBtn = toolbar.createEl("button", {
+      cls: "thino-files-sidebar-toggle clickable-icon",
+      attr: { "aria-label": "Toggle sidebar", title: "Toggle sidebar" },
+    });
+    setIcon(sidebarBtn, "panel-left");
+    sidebarBtn.addEventListener("click", () => {
+      this.sidebarHidden = !this.sidebarHidden;
+      this.applySidebarVisibility();
+    });
     this.viewToggleEl = toolbar.createDiv({ cls: "thino-files-viewtoggle" });
     this.renderViewToggle();
 
-    new FilterBar(container, (query) => {
+    new FilterBar(main, (query) => {
       this.query = query;
       this.renderList();
     });
 
-    this.listEl = container.createDiv({ cls: "thino-files-list" });
+    this.listEl = main.createDiv({ cls: "thino-files-list" });
+    this.onResize();
     this.watchVault();
     await this.refresh();
+  }
+
+  private lastNarrow = false;
+
+  /** Auto-collapse the sidebar when the pane crosses the narrow threshold
+   * (AC §A.1) — manual toggles in a stable-width pane are left alone. */
+  onResize(): void {
+    if (!this.layoutEl || this.contentEl.clientWidth <= 0) return;
+    const narrow = this.contentEl.clientWidth < NARROW_WIDTH;
+    if (narrow !== this.lastNarrow) {
+      this.lastNarrow = narrow;
+      this.sidebarHidden = narrow;
+      this.applySidebarVisibility();
+    }
+  }
+
+  private applySidebarVisibility(): void {
+    this.layoutEl.toggleClass("sidebar-hidden", this.sidebarHidden);
   }
 
   /** Reload (debounced) when files in the posts folder change on disk. */
@@ -96,34 +145,11 @@ export class TimelineView extends ItemView {
     this.registerEvent(this.vault.on("rename", onChange));
   }
 
-  /** Reload posts from disk and re-render the whole list. */
+  /** Reload posts from disk and re-render list + sidebar (AC §A.5). */
   async refresh(): Promise<void> {
     this.posts = await listPosts(this.vault, this.plugin.settings);
-    this.renderScopeBar();
+    this.sidebar.update(this.posts, this.listScope);
     this.renderList();
-  }
-
-  /** Timeline / Archived / Recycle bin tabs with live counts (AC §C.3). */
-  private renderScopeBar(): void {
-    this.listScopeBarEl.empty();
-    const scopes: { scope: PostScope; label: string }[] = [
-      { scope: "timeline", label: "Timeline" },
-      { scope: "archived", label: "Archived" },
-      { scope: "trash", label: "Recycle bin" },
-    ];
-    for (const { scope, label } of scopes) {
-      const count = this.posts.filter((p) => matchScope(p, scope)).length;
-      const btn = this.listScopeBarEl.createEl("button", {
-        cls: "thino-files-scope-tab",
-        text: `${label} (${count})`,
-      });
-      btn.toggleClass("is-active", scope === this.listScope);
-      btn.addEventListener("click", () => {
-        this.listScope = scope;
-        this.renderScopeBar();
-        this.renderList();
-      });
-    }
   }
 
   /** Timeline ⇄ folders segmented toggle; the choice persists (AC §D.1). */
@@ -153,7 +179,11 @@ export class TimelineView extends ItemView {
   private renderList(): void {
     this.listEl.empty();
     const inScope = this.posts.filter((p) => matchScope(p, this.listScope));
-    const visible = inScope.filter((p) => matchPost(p, this.query));
+    const visible = inScope.filter(
+      (p) =>
+        matchPost(p, this.query) &&
+        (!this.selectedDay || p.date.slice(0, 10) === this.selectedDay)
+    );
     if (visible.length === 0) {
       this.listEl.createDiv({
         cls: "thino-files-empty",
@@ -229,14 +259,14 @@ export class TimelineView extends ItemView {
         const i = this.posts.findIndex((x) => x.path === p.path);
         if (i >= 0) this.posts[i] = saved;
         // The card likely left the current scope — re-render list + counts.
-        this.renderScopeBar();
+        this.sidebar.update(this.posts, this.listScope);
         this.renderList();
         return saved;
       },
       deleteForever: async (p) => {
         await deletePost(this.vault, p.path);
         this.posts = this.posts.filter((x) => x.path !== p.path);
-        this.renderScopeBar();
+        this.sidebar.update(this.posts, this.listScope);
       },
     });
   }
