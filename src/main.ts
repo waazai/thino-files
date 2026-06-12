@@ -1,4 +1,5 @@
 import { Plugin } from "obsidian";
+import { mergeSettings, ThinoFilesSettingTab } from "./settings";
 import { TimelineView, VIEW_TYPE_THINO_FILES } from "./TimelineView";
 import { DEFAULT_SETTINGS, type ThinoFilesSettings } from "./types";
 
@@ -20,6 +21,15 @@ export default class ThinoFilesPlugin extends Plugin {
       name: "Open timeline",
       callback: () => void this.activateView(),
     });
+    this.addSettingTab(new ThinoFilesSettingTab(this.app, this));
+  }
+
+  /** Re-read settings-dependent state in every open timeline (e.g. folder change). */
+  refreshTimelines(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_THINO_FILES)) {
+      const view = leaf.view;
+      if (view instanceof TimelineView) void view.refresh();
+    }
   }
 
   onunload(): void {}
@@ -35,7 +45,7 @@ export default class ThinoFilesPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = mergeSettings(await this.loadData());
   }
 
   async saveSettings(): Promise<void> {
