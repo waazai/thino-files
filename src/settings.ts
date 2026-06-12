@@ -51,6 +51,20 @@ export class ThinoFilesSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Assets folder")
+      .setDesc("Where pasted/dropped media is stored; excluded from the timeline.")
+      .addText((text) =>
+        text
+          .setPlaceholder(DEFAULT_SETTINGS.assetsFolder)
+          .setValue(this.plugin.settings.assetsFolder)
+          .onChange((value) =>
+            update((s) => {
+              s.assetsFolder = value.trim() || DEFAULT_SETTINGS.assetsFolder;
+            })
+          )
+      );
+
+    new Setting(containerEl)
       .setName("Filename date format")
       .setDesc("Date prefix for new post filenames (YYYY, MM, DD tokens).")
       .addText((text) =>

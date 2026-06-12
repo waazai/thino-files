@@ -34,9 +34,9 @@ Source: [plan.md](plan.md) · [SPEC.md](../SPEC.md)
 
 ## T4 — Media attachments (SPEC §2.B)
 
-- [ ] `settings.ts`: Assets folder settings row (AC B.1)
-- [ ] `fileManager.ts`: `buildAssetFilename` (`YYYYMMDD-HHmmss-{name}.{ext}`, collision suffix), `saveAsset` (createBinary, never overwrite), `buildMarkdownLink` (AC B.2, B.4)
-- [ ] `Composer.ts` + `PostCard.ts` editor: paste/drop → save → insert link at cursor (AC B.2)
-- [ ] Verify image embeds render on cards (AC B.3)
-- [ ] Tests: asset names/collisions, link building, never-overwrite, `insertAtCursor`
-- [ ] **Checkpoint 4 (final)**: full suite + build; paste screenshot renders; SPEC AC walk-through; bump version + README
+- [x] `settings.ts`: Assets folder settings row (AC B.1)
+- [x] `fileManager.ts`: `buildAssetFilename` (`YYYYMMDD-HHmmss-{name}.{ext}`, collision suffix), `saveAsset` (createBinary, never overwrite), `buildMarkdownLink` (AC B.2, B.4)
+- [x] `Composer.ts` + `PostCard.ts` editor: paste/drop → save → insert link at cursor (AC B.2)
+- [x] Verify image embeds render on cards (AC B.3)
+- [x] Tests: asset names/collisions, link building, never-overwrite, `insertAtCursor`
+- [x] **Checkpoint 4 (final)**: full suite + build; paste screenshot renders; SPEC AC walk-through; bump version + README

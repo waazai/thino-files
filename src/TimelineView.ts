@@ -10,11 +10,13 @@ import {
 import { Composer } from "./Composer";
 import {
   affectsFolder,
+  buildMarkdownLink,
   createPost,
   deletePost,
   groupByFolder,
   listPosts,
   normalizeFolder,
+  saveAsset,
   setPostFlags,
   updatePost,
 } from "./fileManager";
@@ -83,12 +85,16 @@ export class TimelineView extends ItemView {
     });
     const main = this.layoutEl.createDiv({ cls: "thino-files-main" });
 
-    new Composer(main, async (input) => {
-      await createPost(this.vault, this.plugin.settings, input);
-      // Refresh immediately so the new post appears at the top without
-      // waiting for the file watcher (AC §2.1).
-      await this.refresh();
-    });
+    new Composer(
+      main,
+      async (input) => {
+        await createPost(this.vault, this.plugin.settings, input);
+        // Refresh immediately so the new post appears at the top without
+        // waiting for the file watcher (AC §2.1).
+        await this.refresh();
+      },
+      (file) => this.attachFile(file)
+    );
 
     const toolbar = main.createDiv({ cls: "thino-files-toolbar" });
     const sidebarBtn = toolbar.createEl("button", {
@@ -268,7 +274,19 @@ export class TimelineView extends ItemView {
         this.posts = this.posts.filter((x) => x.path !== p.path);
         this.sidebar.update(this.posts, this.listScope);
       },
+      attach: (file) => this.attachFile(file),
     });
+  }
+
+  /** Save a pasted/dropped binary to the assets folder; returns its link. */
+  private async attachFile(file: File): Promise<string> {
+    const path = await saveAsset(
+      this.vault,
+      this.plugin.settings,
+      file.name,
+      await file.arrayBuffer()
+    );
+    return buildMarkdownLink(file.name, path);
   }
 
   /** Open the underlying .md in an editor pane, cursor at line 1 (AC §2.5). */

@@ -1,4 +1,5 @@
 import { parseTagInput } from "./fileManager";
+import { type AttachFn, bindAttachments } from "./media";
 
 export interface ComposerSubmit {
   body: string;
@@ -15,13 +16,15 @@ export class Composer {
 
   constructor(
     parent: HTMLElement,
-    private onSubmit: (input: ComposerSubmit) => Promise<void>
+    private onSubmit: (input: ComposerSubmit) => Promise<void>,
+    attach?: AttachFn
   ) {
     const root = parent.createDiv({ cls: "thino-files-composer" });
     this.bodyEl = root.createEl("textarea", {
       cls: "thino-files-composer-body",
       attr: { placeholder: "What's on your mind?", rows: "4" },
     });
+    if (attach) bindAttachments(this.bodyEl, attach);
     const row = root.createDiv({ cls: "thino-files-composer-row" });
     this.slugEl = row.createEl("input", {
       cls: "thino-files-composer-slug",

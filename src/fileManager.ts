@@ -269,6 +269,77 @@ export async function listPosts(
   });
 }
 
+const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif"]);
+
+/**
+ * `YYYYMMDD-HHmmss-{sanitized}.{ext}` for a pasted/dropped file; collisions
+ * get -2, -3, … via the `exists` probe — an asset is never overwritten
+ * (AC §B.2, B.4).
+ */
+export function buildAssetFilename(
+  date: Date,
+  originalName: string,
+  exists: (name: string) => boolean
+): string {
+  const dot = originalName.lastIndexOf(".");
+  const stem = dot > 0 ? originalName.slice(0, dot) : originalName;
+  const ext = dot > 0 ? originalName.slice(dot + 1).toLowerCase() : "";
+  const base = `${formatDate(date, "YYYYMMDD-HHmmss")}-${sanitizeSlug(stem) || "file"}`;
+  const withExt = (b: string): string => (ext ? `${b}.${ext}` : b);
+  let candidate = withExt(base);
+  for (let n = 2; exists(candidate); n++) {
+    candidate = withExt(`${base}-${n}`);
+  }
+  return candidate;
+}
+
+/** `![name](path)` for images, `[name](path)` otherwise; spaces encoded. */
+export function buildMarkdownLink(name: string, path: string): string {
+  const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  const bang = IMAGE_EXTS.has(ext) ? "!" : "";
+  return `${bang}[${name}](${path.replace(/ /g, "%20")})`;
+}
+
+/** Vault subset needed to store a binary attachment. */
+export interface AssetVault {
+  getAbstractFileByPath(path: string): unknown;
+  createFolder(path: string): Promise<unknown>;
+  createBinary(path: string, data: ArrayBuffer): Promise<unknown>;
+}
+
+/** Write a pasted/dropped binary into the assets folder; returns its path. */
+export async function saveAsset(
+  vault: AssetVault,
+  settings: ThinoFilesSettings,
+  originalName: string,
+  data: ArrayBuffer,
+  now: Date = new Date()
+): Promise<string> {
+  const folder = normalizeFolder(settings.assetsFolder);
+  if (folder && !vault.getAbstractFileByPath(folder)) {
+    await vault.createFolder(folder);
+  }
+  const toPath = (name: string): string => (folder ? `${folder}/${name}` : name);
+  const name = buildAssetFilename(now, originalName, (n) =>
+    Boolean(vault.getAbstractFileByPath(toPath(n)))
+  );
+  const path = toPath(name);
+  await vault.createBinary(path, data);
+  return path;
+}
+
+/** Splice `text` into `value` at `cursor`; returns the new value and cursor. */
+export function insertAtCursor(
+  value: string,
+  cursor: number,
+  text: string
+): { value: string; cursor: number } {
+  return {
+    value: value.slice(0, cursor) + text + value.slice(cursor),
+    cursor: cursor + text.length,
+  };
+}
+
 export interface PostGroup {
   name: string;
   posts: Post[];

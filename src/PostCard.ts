@@ -1,6 +1,7 @@
 import { type App, type Component, MarkdownRenderer, setIcon } from "obsidian";
 import { formatDate, type PostFlags, toggleTaskInBody } from "./fileManager";
 import type { PostScope } from "./filter";
+import { type AttachFn, bindAttachments } from "./media";
 import type { Post, ThinoFilesSettings } from "./types";
 
 export interface PostCardContext {
@@ -18,6 +19,8 @@ export interface PostCardContext {
   setFlags: (post: Post, flags: PostFlags) => Promise<Post>;
   /** Permanently trash the file — recycle bin only (AC §C.4). */
   deleteForever: (post: Post) => Promise<void>;
+  /** Save a pasted/dropped file, returning its Markdown link (AC §B.2). */
+  attach?: AttachFn;
 }
 
 /** One timeline card: date chip, tag pills, GFM-rendered body, action icons. */
@@ -165,6 +168,7 @@ export class PostCard {
       attr: { rows: String(Math.max(4, this.post.body.split("\n").length + 1)) },
     });
     editor.value = this.post.body;
+    if (this.ctx.attach) bindAttachments(editor, this.ctx.attach);
     const buttons = this.bodyEl.createDiv({ cls: "thino-files-card-editor-buttons" });
     const saveBtn = buttons.createEl("button", { text: "Save", cls: "mod-cta" });
     const cancelBtn = buttons.createEl("button", { text: "Cancel" });
