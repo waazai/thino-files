@@ -138,6 +138,28 @@ export async function updatePost(
   return { ...post, body: newBody, updated: toLocalIso(now) };
 }
 
+const TASK_LINE = /^(\s*[-*+]\s+\[)([ xX])(\])/;
+
+/**
+ * Flip the nth task checkbox (render order) in a post body. Returns the new
+ * body, or null when fewer than n+1 task lines exist.
+ */
+export function toggleTaskInBody(body: string, taskIndex: number): string | null {
+  const lines = body.split("\n");
+  let seen = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(TASK_LINE);
+    if (!m) continue;
+    if (seen === taskIndex) {
+      const flipped = m[2] === " " ? "x" : " ";
+      lines[i] = lines[i].replace(TASK_LINE, `$1${flipped}$3`);
+      return lines.join("\n");
+    }
+    seen++;
+  }
+  return null;
+}
+
 /** Vault subset needed to trash a post. */
 export interface TrashableVault {
   getAbstractFileByPath(path: string): unknown;

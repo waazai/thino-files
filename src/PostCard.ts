@@ -1,5 +1,5 @@
 import { type App, type Component, MarkdownRenderer, setIcon } from "obsidian";
-import { formatDate } from "./fileManager";
+import { formatDate, toggleTaskInBody } from "./fileManager";
 import type { Post, ThinoFilesSettings } from "./types";
 
 export interface PostCardContext {
@@ -77,6 +77,25 @@ export class PostCard {
       this.post.path,
       this.ctx.component
     );
+    this.bindTaskCheckboxes();
+  }
+
+  /** Make rendered `- [ ]` checkboxes toggle the underlying file line. */
+  private bindTaskCheckboxes(): void {
+    const boxes = this.bodyEl.querySelectorAll<HTMLInputElement>(
+      'input[type="checkbox"]'
+    );
+    boxes.forEach((box, index) => {
+      box.removeAttribute("disabled");
+      box.addEventListener("change", () => {
+        void (async () => {
+          const newBody = toggleTaskInBody(this.post.body, index);
+          if (newBody === null) return;
+          this.post = await this.ctx.savePost(this.post, newBody);
+          await this.renderBody();
+        })();
+      });
+    });
   }
 
   /** Inline confirmation popover, then trash the file and remove the card. */
