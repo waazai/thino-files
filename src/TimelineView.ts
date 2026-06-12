@@ -1,6 +1,6 @@
-import { ItemView, type Vault, WorkspaceLeaf } from "obsidian";
+import { debounce, ItemView, type TAbstractFile, type Vault, WorkspaceLeaf } from "obsidian";
 import { Composer } from "./Composer";
-import { createPost, listPosts } from "./fileManager";
+import { affectsFolder, createPost, listPosts, normalizeFolder } from "./fileManager";
 import type ThinoFilesPlugin from "./main";
 import { PostCard } from "./PostCard";
 import type { Post } from "./types";
@@ -44,7 +44,21 @@ export class TimelineView extends ItemView {
     });
 
     this.listEl = container.createDiv({ cls: "thino-files-list" });
+    this.watchVault();
     await this.refresh();
+  }
+
+  /** Reload (debounced) when files in the posts folder change on disk. */
+  private watchVault(): void {
+    const scheduleRefresh = debounce(() => void this.refresh(), 300, true);
+    const onChange = (file: TAbstractFile, oldPath?: string): void => {
+      const folder = normalizeFolder(this.plugin.settings.postsFolder);
+      if (affectsFolder(folder, file.path, oldPath)) scheduleRefresh();
+    };
+    this.registerEvent(this.vault.on("create", onChange));
+    this.registerEvent(this.vault.on("modify", onChange));
+    this.registerEvent(this.vault.on("delete", onChange));
+    this.registerEvent(this.vault.on("rename", onChange));
   }
 
   /** Reload posts from disk and re-render the whole list. */

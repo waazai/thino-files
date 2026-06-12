@@ -123,6 +123,20 @@ export function isDirectChild(folder: string, path: string): boolean {
 }
 
 /**
+ * True when a vault event for `path` (or a rename from `oldPath`) touches a
+ * direct-child .md of the posts folder — the watcher's refresh predicate.
+ */
+export function affectsFolder(
+  folder: string,
+  path: string,
+  oldPath?: string
+): boolean {
+  const hits = (p: string): boolean =>
+    p.endsWith(".md") && (folder ? isDirectChild(folder, p) : !p.includes("/"));
+  return hits(path) || (oldPath !== undefined && hits(oldPath));
+}
+
+/**
  * Read every direct-child .md of the configured folder, parse frontmatter,
  * sort by `date` descending (frontmatter-less files last).
  */
