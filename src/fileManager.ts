@@ -110,6 +110,34 @@ export async function createPost(
   return { file, path, content };
 }
 
+/** Vault subset needed to rewrite an existing post. */
+export interface ModifiableVault {
+  getAbstractFileByPath(path: string): unknown;
+  modify(file: unknown, data: string): Promise<void>;
+}
+
+/** New file content for an edit: body replaced, `updated` bumped, `date`/tags kept. */
+export function buildEditedContent(post: Post, newBody: string, now: Date): string {
+  return serializePost({
+    date: post.date,
+    updated: toLocalIso(now),
+    tags: post.tags,
+    body: newBody,
+  });
+}
+
+export async function updatePost(
+  vault: ModifiableVault,
+  post: Post,
+  newBody: string,
+  now: Date = new Date()
+): Promise<Post> {
+  const file = vault.getAbstractFileByPath(post.path);
+  if (!file) throw new Error(`File not found: ${post.path}`);
+  await vault.modify(file, buildEditedContent(post, newBody, now));
+  return { ...post, body: newBody, updated: toLocalIso(now) };
+}
+
 /** Vault subset needed to list and read posts. */
 export interface ListableVault {
   getMarkdownFiles(): { path: string }[];

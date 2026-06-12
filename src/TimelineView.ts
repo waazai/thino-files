@@ -1,6 +1,6 @@
 import { debounce, ItemView, type TAbstractFile, TFile, type Vault, WorkspaceLeaf } from "obsidian";
 import { Composer } from "./Composer";
-import { affectsFolder, createPost, listPosts, normalizeFolder } from "./fileManager";
+import { affectsFolder, createPost, listPosts, normalizeFolder, updatePost } from "./fileManager";
 import type ThinoFilesPlugin from "./main";
 import { PostCard } from "./PostCard";
 import type { Post } from "./types";
@@ -87,6 +87,14 @@ export class TimelineView extends ItemView {
       settings: this.plugin.settings,
       component: this,
       openPost: (p) => this.openPost(p),
+      savePost: async (p, newBody) => {
+        const saved = await updatePost(this.vault, p, newBody);
+        const i = this.posts.findIndex((x) => x.path === p.path);
+        if (i >= 0) this.posts[i] = saved;
+        // Only the edited card re-renders (SPEC §8); the watcher's debounced
+        // full refresh will reconcile shortly after.
+        return saved;
+      },
     });
   }
 
