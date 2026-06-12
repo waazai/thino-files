@@ -138,6 +138,23 @@ export async function updatePost(
   return { ...post, body: newBody, updated: toLocalIso(now) };
 }
 
+/** Vault subset needed to trash a post. */
+export interface TrashableVault {
+  getAbstractFileByPath(path: string): unknown;
+  trash(file: unknown, system: boolean): Promise<void>;
+}
+
+/**
+ * Move a post to trash. Always `vault.trash` — never `vault.delete` — so the
+ * file stays recoverable (SPEC §8). `system: true` respects the user's
+ * Obsidian trash preference.
+ */
+export async function deletePost(vault: TrashableVault, path: string): Promise<void> {
+  const file = vault.getAbstractFileByPath(path);
+  if (!file) return;
+  await vault.trash(file, true);
+}
+
 /** Vault subset needed to list and read posts. */
 export interface ListableVault {
   getMarkdownFiles(): { path: string }[];

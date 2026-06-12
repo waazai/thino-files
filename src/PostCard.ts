@@ -11,6 +11,8 @@ export interface PostCardContext {
   openPost: (post: Post) => Promise<void>;
   /** Persist an edited body; returns the updated post (AC §2.3). */
   savePost: (post: Post, newBody: string) => Promise<Post>;
+  /** Trash the post's file (AC §2.4). */
+  deletePost: (post: Post) => Promise<void>;
 }
 
 /** One timeline card: date chip, tag pills, GFM-rendered body, action icons. */
@@ -40,6 +42,7 @@ export class PostCard {
     this.addAction("file-symlink", "Open source file", () =>
       void this.ctx.openPost(this.post)
     );
+    this.addAction("trash-2", "Delete", () => this.confirmDelete());
 
     this.bodyEl = this.el.createDiv({ cls: "thino-files-card-body" });
     void this.renderBody();
@@ -74,6 +77,19 @@ export class PostCard {
       this.post.path,
       this.ctx.component
     );
+  }
+
+  /** Inline confirmation popover, then trash the file and remove the card. */
+  private confirmDelete(): void {
+    if (this.el.querySelector(".thino-files-card-confirm")) return;
+    const popover = this.el.createDiv({ cls: "thino-files-card-confirm" });
+    popover.createSpan({ text: "Delete this note?" });
+    const yes = popover.createEl("button", { text: "Delete", cls: "mod-warning" });
+    const no = popover.createEl("button", { text: "Cancel" });
+    yes.addEventListener("click", () => {
+      void this.ctx.deletePost(this.post).then(() => this.el.remove());
+    });
+    no.addEventListener("click", () => popover.remove());
   }
 
   /** Swap the rendered body for a textarea; save on Cmd/Ctrl+Enter, cancel on Esc. */
