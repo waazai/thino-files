@@ -4,14 +4,14 @@ Source: [plan.md](plan.md) · [SPEC.md](../SPEC.md)
 
 ## T1 — Archive & recycle bin (SPEC §2.C)
 
-- [ ] `types.ts`: optional `archived?` / `deleted?` on `PostFrontmatter`
-- [ ] `frontmatter.ts`: serialize flags only when true; parse flags; legacy files unchanged (AC C.1)
-- [ ] `fileManager.ts`: `buildFlaggedContent` (pure, bumps `updated`) + `setPostFlags`
-- [ ] `matchScope(post, scope)` — timeline / archived / trash
-- [ ] `PostCard.ts`: scope-dependent actions — archive, unarchive, restore, delete-forever (confirm → `vault.trash`) (AC C.2, C.4)
-- [ ] `TimelineView.ts`: scope state + temporary header tab strip with counts (AC C.3)
-- [ ] Tests: flag round-trip, legacy parse, `buildFlaggedContent`, `matchScope`, `setPostFlags`
-- [ ] **Checkpoint 1**: `npm test` + `npm run build` green; manual archive/delete/restore cycle
+- [x] `types.ts`: optional `archived?` / `deleted?` on `PostFrontmatter`
+- [x] `frontmatter.ts`: serialize flags only when true; parse flags; legacy files unchanged (AC C.1)
+- [x] `fileManager.ts`: `buildFlaggedContent` (pure, bumps `updated`) + `setPostFlags`
+- [x] `matchScope(post, scope)` — timeline / archived / trash
+- [x] `PostCard.ts`: scope-dependent actions — archive, unarchive, restore, delete-forever (confirm → `vault.trash`) (AC C.2, C.4)
+- [x] `TimelineView.ts`: scope state + temporary header tab strip with counts (AC C.3)
+- [x] Tests: flag round-trip, legacy parse, `buildFlaggedContent`, `matchScope`, `setPostFlags`
+- [x] **Checkpoint 1**: `npm test` + `npm run build` green; manual archive/delete/restore cycle
 
 ## T2 — Recursive listing + folder view (SPEC §2.D)
 

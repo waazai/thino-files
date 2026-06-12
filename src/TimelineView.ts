@@ -1,8 +1,16 @@
 import { debounce, ItemView, type TAbstractFile, TFile, type Vault, WorkspaceLeaf } from "obsidian";
 import { Composer } from "./Composer";
-import { affectsFolder, createPost, deletePost, listPosts, normalizeFolder, updatePost } from "./fileManager";
+import {
+  affectsFolder,
+  createPost,
+  deletePost,
+  listPosts,
+  normalizeFolder,
+  setPostFlags,
+  updatePost,
+} from "./fileManager";
 import { FilterBar } from "./FilterBar";
-import { matchPost, parseQuery, type PostQuery } from "./filter";
+import { matchPost, matchScope, parseQuery, type PostQuery, type PostScope } from "./filter";
 import type ThinoFilesPlugin from "./main";
 import { PostCard } from "./PostCard";
 import type { Post } from "./types";
@@ -11,8 +19,10 @@ export const VIEW_TYPE_THINO_FILES = "thino-files-timeline";
 
 export class TimelineView extends ItemView {
   private listEl!: HTMLElement;
+  private listScopeBarEl!: HTMLElement;
   private posts: Post[] = [];
   private query: PostQuery = parseQuery("");
+  private listScope: PostScope = "timeline";
 
   constructor(leaf: WorkspaceLeaf, private plugin: ThinoFilesPlugin) {
     super(leaf);
@@ -46,6 +56,8 @@ export class TimelineView extends ItemView {
       await this.refresh();
     });
 
+    this.listScopeBarEl = container.createDiv({ cls: "thino-files-scopebar" });
+
     new FilterBar(container, (query) => {
       this.query = query;
       this.renderList();
@@ -72,17 +84,44 @@ export class TimelineView extends ItemView {
   /** Reload posts from disk and re-render the whole list. */
   async refresh(): Promise<void> {
     this.posts = await listPosts(this.vault, this.plugin.settings);
+    this.renderScopeBar();
     this.renderList();
+  }
+
+  /** Timeline / Archived / Recycle bin tabs with live counts (AC §C.3). */
+  private renderScopeBar(): void {
+    this.listScopeBarEl.empty();
+    const scopes: { scope: PostScope; label: string }[] = [
+      { scope: "timeline", label: "Timeline" },
+      { scope: "archived", label: "Archived" },
+      { scope: "trash", label: "Recycle bin" },
+    ];
+    for (const { scope, label } of scopes) {
+      const count = this.posts.filter((p) => matchScope(p, scope)).length;
+      const btn = this.listScopeBarEl.createEl("button", {
+        cls: "thino-files-scope-tab",
+        text: `${label} (${count})`,
+      });
+      btn.toggleClass("is-active", scope === this.listScope);
+      btn.addEventListener("click", () => {
+        this.listScope = scope;
+        this.renderScopeBar();
+        this.renderList();
+      });
+    }
   }
 
   private renderList(): void {
     this.listEl.empty();
-    const visible = this.posts.filter((p) => matchPost(p, this.query));
+    const inScope = this.posts.filter((p) => matchScope(p, this.listScope));
+    const visible = inScope.filter((p) => matchPost(p, this.query));
     if (visible.length === 0) {
       this.listEl.createDiv({
         cls: "thino-files-empty",
-        text: this.posts.length === 0
-          ? "No posts yet — write one above."
+        text: inScope.length === 0
+          ? this.listScope === "timeline"
+            ? "No posts yet — write one above."
+            : "Nothing here."
           : "No posts match the filter.",
       });
       return;
@@ -97,6 +136,7 @@ export class TimelineView extends ItemView {
       app: this.app,
       settings: this.plugin.settings,
       component: this,
+      scope: this.listScope,
       openPost: (p) => this.openPost(p),
       savePost: async (p, newBody) => {
         const saved = await updatePost(this.vault, p, newBody);
@@ -106,9 +146,19 @@ export class TimelineView extends ItemView {
         // full refresh will reconcile shortly after.
         return saved;
       },
-      deletePost: async (p) => {
+      setFlags: async (p, flags) => {
+        const saved = await setPostFlags(this.vault, p, flags);
+        const i = this.posts.findIndex((x) => x.path === p.path);
+        if (i >= 0) this.posts[i] = saved;
+        // The card likely left the current scope — re-render list + counts.
+        this.renderScopeBar();
+        this.renderList();
+        return saved;
+      },
+      deleteForever: async (p) => {
         await deletePost(this.vault, p.path);
         this.posts = this.posts.filter((x) => x.path !== p.path);
+        this.renderScopeBar();
       },
     });
   }

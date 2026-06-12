@@ -5,6 +5,10 @@ export interface PostFrontmatter {
   updated: string;
   /** Tags live only in frontmatter; body is pure content. */
   tags: string[];
+  /** Soft-archive flag (SPEC §2.C); absent = active. */
+  archived?: boolean;
+  /** Soft-delete flag — post shows only in the recycle bin scope. */
+  deleted?: boolean;
 }
 
 export interface Post extends PostFrontmatter {

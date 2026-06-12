@@ -28,6 +28,15 @@ export function parseQuery(input: string): PostQuery {
   return query;
 }
 
+/** List scopes (SPEC §2.C): default timeline, archived box, recycle bin. */
+export type PostScope = "timeline" | "archived" | "trash";
+
+export function matchScope(post: Post, scope: PostScope): boolean {
+  if (scope === "trash") return post.deleted === true;
+  if (scope === "archived") return post.archived === true && !post.deleted;
+  return !post.archived && !post.deleted;
+}
+
 export function matchPost(post: Post, query: PostQuery): boolean {
   const haystack = `${post.body}\n${post.tags.join("\n")}`.toLowerCase();
   if (!query.text.every((term) => haystack.includes(term))) return false;

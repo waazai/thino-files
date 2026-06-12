@@ -138,6 +138,43 @@ export async function updatePost(
   return { ...post, body: newBody, updated: toLocalIso(now) };
 }
 
+/** Soft-state flags edited by archive/restore/delete actions (SPEC §2.C). */
+export interface PostFlags {
+  archived?: boolean;
+  deleted?: boolean;
+}
+
+/** New file content with flags applied — body/date/tags kept, `updated` bumped. */
+export function buildFlaggedContent(post: Post, flags: PostFlags, now: Date): string {
+  return serializePost({
+    date: post.date,
+    updated: toLocalIso(now),
+    tags: post.tags,
+    archived: flags.archived ?? post.archived,
+    deleted: flags.deleted ?? post.deleted,
+    body: post.body,
+  });
+}
+
+/**
+ * Archive/unarchive/restore/soft-delete all funnel through here. Returns the
+ * updated post with cleared flags removed (absent = active, AC §C.1).
+ */
+export async function setPostFlags(
+  vault: ModifiableVault,
+  post: Post,
+  flags: PostFlags,
+  now: Date = new Date()
+): Promise<Post> {
+  const file = vault.getAbstractFileByPath(post.path);
+  if (!file) throw new Error(`File not found: ${post.path}`);
+  await vault.modify(file, buildFlaggedContent(post, flags, now));
+  const result: Post = { ...post, ...flags, updated: toLocalIso(now) };
+  if (!result.archived) delete result.archived;
+  if (!result.deleted) delete result.deleted;
+  return result;
+}
+
 const TASK_LINE = /^(\s*[-*+]\s+\[)([ xX])(\])/;
 
 /**

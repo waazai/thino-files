@@ -21,6 +21,9 @@ export function serializePost(post: PostFrontmatter & { body: string }): string 
     `date: ${post.date}\n` +
     `updated: ${post.updated}\n` +
     `tags: [${post.tags.join(", ")}]\n` +
+    // Flags appear only when set — legacy files stay byte-identical (AC §C.1).
+    (post.archived ? "archived: true\n" : "") +
+    (post.deleted ? "deleted: true\n" : "") +
     "---\n\n" +
     `${post.body.replace(/\s+$/, "")}\n`
   );
@@ -64,7 +67,12 @@ export function parsePost(raw: string): PostFrontmatter & { body: string } {
 
   const fmLines = m[1].split(/\r?\n/);
   const body = raw.slice(m[0].length).replace(/^\r?\n/, "").replace(/\s+$/, "");
-  const result = { date: "", updated: "", tags: [] as string[], body };
+  const result: PostFrontmatter & { body: string } = {
+    date: "",
+    updated: "",
+    tags: [],
+    body,
+  };
 
   for (let i = 0; i < fmLines.length; i++) {
     const kv = fmLines[i].match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
@@ -73,6 +81,8 @@ export function parsePost(raw: string): PostFrontmatter & { body: string } {
     if (key === "date") result.date = unquote(value);
     else if (key === "updated") result.updated = unquote(value);
     else if (key === "tags") result.tags = parseTags(value, fmLines.slice(i + 1));
+    else if (key === "archived" && unquote(value) === "true") result.archived = true;
+    else if (key === "deleted" && unquote(value) === "true") result.deleted = true;
   }
   return result;
 }

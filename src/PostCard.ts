@@ -1,5 +1,6 @@
 import { type App, type Component, MarkdownRenderer, setIcon } from "obsidian";
-import { formatDate, toggleTaskInBody } from "./fileManager";
+import { formatDate, type PostFlags, toggleTaskInBody } from "./fileManager";
+import type { PostScope } from "./filter";
 import type { Post, ThinoFilesSettings } from "./types";
 
 export interface PostCardContext {
@@ -7,12 +8,16 @@ export interface PostCardContext {
   settings: ThinoFilesSettings;
   /** Owner component for MarkdownRenderer lifecycle (the timeline view). */
   component: Component;
+  /** Scope the card is rendered in — decides which actions show (AC §C.2–C.4). */
+  scope: PostScope;
   /** Open the post's source file in an editor pane (AC §2.5). */
   openPost: (post: Post) => Promise<void>;
   /** Persist an edited body; returns the updated post (AC §2.3). */
   savePost: (post: Post, newBody: string) => Promise<Post>;
-  /** Trash the post's file (AC §2.4). */
-  deletePost: (post: Post) => Promise<void>;
+  /** Archive/unarchive/soft-delete/restore via frontmatter flags (AC §C.2). */
+  setFlags: (post: Post, flags: PostFlags) => Promise<Post>;
+  /** Permanently trash the file — recycle bin only (AC §C.4). */
+  deleteForever: (post: Post) => Promise<void>;
 }
 
 /** One timeline card: date chip, tag pills, GFM-rendered body, action icons. */
@@ -38,11 +43,7 @@ export class PostCard {
       tagsEl.createSpan({ cls: "thino-files-tag-pill", text: tag });
     }
     this.actionsEl = header.createSpan({ cls: "thino-files-card-actions" });
-    this.addAction("pencil", "Edit", () => this.enterEditMode());
-    this.addAction("file-symlink", "Open source file", () =>
-      void this.ctx.openPost(this.post)
-    );
-    this.addAction("trash-2", "Delete", () => this.confirmDelete());
+    this.addScopeActions();
 
     this.bodyEl = this.el.createDiv({ cls: "thino-files-card-body" });
     void this.renderBody();
@@ -98,15 +99,58 @@ export class PostCard {
     });
   }
 
-  /** Inline confirmation popover, then trash the file and remove the card. */
-  private confirmDelete(): void {
+  /** Action set per scope: timeline edits/archives, trash restores/destroys. */
+  private addScopeActions(): void {
+    const { scope } = this.ctx;
+    if (scope === "timeline") {
+      this.addAction("pencil", "Edit", () => this.enterEditMode());
+      this.addAction("file-symlink", "Open source file", () =>
+        void this.ctx.openPost(this.post)
+      );
+      this.addAction("archive", "Archive", () =>
+        void this.ctx.setFlags(this.post, { archived: true })
+      );
+      this.addAction("trash-2", "Delete", () =>
+        this.confirm("Move this note to the recycle bin?", "Delete", () =>
+          void this.ctx.setFlags(this.post, { deleted: true })
+        )
+      );
+    } else if (scope === "archived") {
+      this.addAction("archive-restore", "Unarchive", () =>
+        void this.ctx.setFlags(this.post, { archived: false })
+      );
+      this.addAction("file-symlink", "Open source file", () =>
+        void this.ctx.openPost(this.post)
+      );
+      this.addAction("trash-2", "Delete", () =>
+        this.confirm("Move this note to the recycle bin?", "Delete", () =>
+          void this.ctx.setFlags(this.post, { deleted: true })
+        )
+      );
+    } else {
+      this.addAction("undo-2", "Restore", () =>
+        void this.ctx.setFlags(this.post, { deleted: false })
+      );
+      this.addAction("trash-2", "Delete forever", () =>
+        this.confirm(
+          "Permanently delete this note? It moves to the system trash.",
+          "Delete forever",
+          () => void this.ctx.deleteForever(this.post).then(() => this.el.remove())
+        )
+      );
+    }
+  }
+
+  /** Inline confirmation popover guarding destructive actions (AC §C.2, C.4). */
+  private confirm(message: string, confirmLabel: string, action: () => void): void {
     if (this.el.querySelector(".thino-files-card-confirm")) return;
     const popover = this.el.createDiv({ cls: "thino-files-card-confirm" });
-    popover.createSpan({ text: "Delete this note?" });
-    const yes = popover.createEl("button", { text: "Delete", cls: "mod-warning" });
+    popover.createSpan({ text: message });
+    const yes = popover.createEl("button", { text: confirmLabel, cls: "mod-warning" });
     const no = popover.createEl("button", { text: "Cancel" });
     yes.addEventListener("click", () => {
-      void this.ctx.deletePost(this.post).then(() => this.el.remove());
+      popover.remove();
+      action();
     });
     no.addEventListener("click", () => popover.remove());
   }

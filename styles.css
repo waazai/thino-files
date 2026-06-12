@@ -189,3 +189,22 @@
   border-radius: var(--radius-s);
   background: var(--background-modifier-error-hover, var(--background-secondary));
 }
+
+/* Scope tabs (Timeline / Archived / Recycle bin) */
+.thino-files-scopebar {
+  display: flex;
+  gap: var(--size-2-2);
+  margin-bottom: var(--size-2-3);
+}
+
+.thino-files-scope-tab {
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  border-radius: var(--radius-s);
+  font-size: var(--font-ui-small);
+}
+
+.thino-files-scope-tab.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
