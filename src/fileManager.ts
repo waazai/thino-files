@@ -2,8 +2,8 @@
 // narrow VaultLike interface so unit tests can substitute an in-memory fake;
 // keep `obsidian` imports type-only so this module loads under vitest.
 
-import { serializePost, toLocalIso } from "./frontmatter";
-import type { ThinoFilesSettings } from "./types";
+import { parsePost, serializePost, toLocalIso } from "./frontmatter";
+import type { Post, ThinoFilesSettings } from "./types";
 
 const pad = (n: number): string => String(n).padStart(2, "0");
 
@@ -108,4 +108,43 @@ export async function createPost(
   const path = toPath(name);
   const file = await vault.create(path, content);
   return { file, path, content };
+}
+
+/** Vault subset needed to list and read posts. */
+export interface ListableVault {
+  getMarkdownFiles(): { path: string }[];
+  cachedRead(file: { path: string }): Promise<string>;
+}
+
+/** True when `path` is a direct child of `folder` (no deeper nesting). */
+export function isDirectChild(folder: string, path: string): boolean {
+  if (!path.startsWith(`${folder}/`)) return false;
+  return !path.slice(folder.length + 1).includes("/");
+}
+
+/**
+ * Read every direct-child .md of the configured folder, parse frontmatter,
+ * sort by `date` descending (frontmatter-less files last).
+ */
+export async function listPosts(
+  vault: ListableVault,
+  settings: ThinoFilesSettings
+): Promise<Post[]> {
+  const folder = normalizeFolder(settings.postsFolder);
+  const files = vault
+    .getMarkdownFiles()
+    .filter((f) => (folder ? isDirectChild(folder, f.path) : !f.path.includes("/")));
+  const posts = await Promise.all(
+    files.map(async (f): Promise<Post> => {
+      const raw = await vault.cachedRead(f);
+      return { path: f.path, ...parsePost(raw) };
+    })
+  );
+  // ISO 8601 strings sort lexicographically; empty dates sink to the bottom.
+  return posts.sort((a, b) => {
+    if (a.date === b.date) return a.path.localeCompare(b.path);
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return b.date.localeCompare(a.date);
+  });
 }
