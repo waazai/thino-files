@@ -1,4 +1,4 @@
-import { debounce, ItemView, type TAbstractFile, type Vault, WorkspaceLeaf } from "obsidian";
+import { debounce, ItemView, type TAbstractFile, TFile, type Vault, WorkspaceLeaf } from "obsidian";
 import { Composer } from "./Composer";
 import { affectsFolder, createPost, listPosts, normalizeFolder } from "./fileManager";
 import type ThinoFilesPlugin from "./main";
@@ -86,6 +86,17 @@ export class TimelineView extends ItemView {
       app: this.app,
       settings: this.plugin.settings,
       component: this,
+      openPost: (p) => this.openPost(p),
     });
+  }
+
+  /** Open the underlying .md in an editor pane, cursor at line 1 (AC §2.5). */
+  private async openPost(post: Post): Promise<void> {
+    const file = this.vault.getAbstractFileByPath(post.path);
+    if (!(file instanceof TFile)) return;
+    const leaf = this.app.workspace.getLeaf(
+      this.plugin.settings.openInNewPane ? "tab" : false
+    );
+    await leaf.openFile(file, { eState: { line: 0 } });
   }
 }
