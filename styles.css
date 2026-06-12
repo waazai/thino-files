@@ -1,6 +1,191 @@
-/* Thino Files — timeline styles (polished in T12) */
+/* Thino Files — timeline view */
+
 .thino-files-view {
   display: flex;
   flex-direction: column;
   height: 100%;
+  gap: var(--size-4-2);
+}
+
+/* Composer */
+.thino-files-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+  padding: var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.thino-files-composer-body {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-text);
+}
+
+.thino-files-composer-row {
+  display: flex;
+  gap: var(--size-4-1);
+  align-items: center;
+}
+
+.thino-files-composer-slug,
+.thino-files-composer-tags {
+  flex: 1;
+  min-width: 0;
+}
+
+.thino-files-composer-error {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+}
+
+/* Filter bar */
+.thino-files-filterbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-2);
+}
+
+.thino-files-filter-input {
+  width: 100%;
+}
+
+.thino-files-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-2-2);
+}
+
+.thino-files-filter-chips:empty {
+  display: none;
+}
+
+.thino-files-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-1);
+  padding: 0 var(--size-2-3);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-hover);
+  font-size: var(--font-ui-small);
+}
+
+.thino-files-filter-chip-x {
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.thino-files-filter-chip-x:hover {
+  color: var(--text-error);
+}
+
+/* Timeline list */
+.thino-files-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  padding-bottom: var(--size-4-4);
+}
+
+.thino-files-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--size-4-4);
+}
+
+/* Cards */
+.thino-files-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: var(--size-4-2);
+  background: var(--background-primary);
+}
+
+.thino-files-card:hover {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.thino-files-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-3);
+  margin-bottom: var(--size-2-2);
+}
+
+.thino-files-card-date {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+
+.thino-files-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-2-1);
+  flex: 1;
+}
+
+.thino-files-tag-pill {
+  padding: 0 var(--size-2-2);
+  border-radius: var(--radius-s);
+  background: var(--tag-background, var(--background-modifier-hover));
+  color: var(--tag-color, var(--text-accent));
+  font-size: var(--font-ui-smaller);
+}
+
+.thino-files-card-actions {
+  display: flex;
+  gap: var(--size-2-1);
+  opacity: 0;
+  transition: opacity 120ms ease-in-out;
+}
+
+.thino-files-card:hover .thino-files-card-actions {
+  opacity: 1;
+}
+
+.thino-files-card-action {
+  background: transparent;
+  box-shadow: none;
+  padding: var(--size-2-1);
+}
+
+.thino-files-card-body {
+  font-size: var(--font-text-size);
+}
+
+.thino-files-card-body > :first-child {
+  margin-top: 0;
+}
+
+.thino-files-card-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* Inline editor */
+.thino-files-card-editor {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-text);
+}
+
+.thino-files-card-editor-buttons {
+  display: flex;
+  gap: var(--size-2-2);
+  margin-top: var(--size-2-2);
+}
+
+/* Delete confirmation */
+.thino-files-card-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-3);
+  margin-top: var(--size-2-2);
+  padding: var(--size-2-3);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-error-hover, var(--background-secondary));
 }
