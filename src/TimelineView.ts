@@ -1,6 +1,8 @@
 import { debounce, ItemView, type TAbstractFile, TFile, type Vault, WorkspaceLeaf } from "obsidian";
 import { Composer } from "./Composer";
 import { affectsFolder, createPost, deletePost, listPosts, normalizeFolder, updatePost } from "./fileManager";
+import { FilterBar } from "./FilterBar";
+import { matchPost, parseQuery, type PostQuery } from "./filter";
 import type ThinoFilesPlugin from "./main";
 import { PostCard } from "./PostCard";
 import type { Post } from "./types";
@@ -10,6 +12,7 @@ export const VIEW_TYPE_THINO_FILES = "thino-files-timeline";
 export class TimelineView extends ItemView {
   private listEl!: HTMLElement;
   private posts: Post[] = [];
+  private query: PostQuery = parseQuery("");
 
   constructor(leaf: WorkspaceLeaf, private plugin: ThinoFilesPlugin) {
     super(leaf);
@@ -43,6 +46,11 @@ export class TimelineView extends ItemView {
       await this.refresh();
     });
 
+    new FilterBar(container, (query) => {
+      this.query = query;
+      this.renderList();
+    });
+
     this.listEl = container.createDiv({ cls: "thino-files-list" });
     this.watchVault();
     await this.refresh();
@@ -69,14 +77,17 @@ export class TimelineView extends ItemView {
 
   private renderList(): void {
     this.listEl.empty();
-    if (this.posts.length === 0) {
+    const visible = this.posts.filter((p) => matchPost(p, this.query));
+    if (visible.length === 0) {
       this.listEl.createDiv({
         cls: "thino-files-empty",
-        text: "No posts yet — write one above.",
+        text: this.posts.length === 0
+          ? "No posts yet — write one above."
+          : "No posts match the filter.",
       });
       return;
     }
-    for (const post of this.posts) {
+    for (const post of visible) {
       this.createCard(post);
     }
   }
