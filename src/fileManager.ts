@@ -1,5 +1,9 @@
-// Pure filename/date helpers (unit-tested) — vault-bound CRUD lands in T3+.
-// Keep `obsidian` imports type-only so this module loads under vitest.
+// Filename/date helpers + vault-bound CRUD. Vault access goes through the
+// narrow VaultLike interface so unit tests can substitute an in-memory fake;
+// keep `obsidian` imports type-only so this module loads under vitest.
+
+import { serializePost, toLocalIso } from "./frontmatter";
+import type { ThinoFilesSettings } from "./types";
 
 const pad = (n: number): string => String(n).padStart(2, "0");
 
@@ -45,4 +49,63 @@ export function buildFilename(
     candidate = `${base}-${n}.md`;
   }
   return candidate;
+}
+
+/** Comma-separated tag input → clean tag list (leading # stripped). */
+export function parseTagInput(input: string): string[] {
+  return input
+    .split(",")
+    .map((t) => t.trim().replace(/^#+/, ""))
+    .filter(Boolean);
+}
+
+/** Subset of Obsidian's Vault used by this plugin — fakeable in tests. */
+export interface VaultLike {
+  getAbstractFileByPath(path: string): unknown;
+  create(path: string, data: string): Promise<unknown>;
+  createFolder(path: string): Promise<unknown>;
+}
+
+export interface CreatePostInput {
+  body: string;
+  slug: string;
+  tags: string[];
+  /** Injectable clock for tests; defaults to new Date(). */
+  now?: Date;
+}
+
+export function normalizeFolder(folder: string): string {
+  return folder.trim().replace(/^\/+|\/+$/g, "");
+}
+
+export async function createPost(
+  vault: VaultLike,
+  settings: ThinoFilesSettings,
+  input: CreatePostInput
+): Promise<{ file: unknown; path: string; content: string }> {
+  if (settings.requireSlug && !sanitizeSlug(input.slug)) {
+    throw new Error("A slug is required to post.");
+  }
+  const now = input.now ?? new Date();
+  const folder = normalizeFolder(settings.postsFolder);
+  if (folder && !vault.getAbstractFileByPath(folder)) {
+    await vault.createFolder(folder);
+  }
+  const toPath = (name: string): string => (folder ? `${folder}/${name}` : name);
+  const name = buildFilename(
+    now,
+    input.slug,
+    (n) => Boolean(vault.getAbstractFileByPath(toPath(n))),
+    settings.filenameDateFormat
+  );
+  const iso = toLocalIso(now);
+  const content = serializePost({
+    date: iso,
+    updated: iso,
+    tags: input.tags,
+    body: input.body,
+  });
+  const path = toPath(name);
+  const file = await vault.create(path, content);
+  return { file, path, content };
 }
