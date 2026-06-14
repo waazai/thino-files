@@ -150,7 +150,7 @@
 
 .thino-files-card-title {
   font-weight: var(--font-bold);
-  font-size: var(--font-ui-medium);
+  font-size: var(--font-ui-large);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,16 +224,35 @@
   pointer-events: none;
 }
 
-/* Show more / Show less toggle — only rendered when the body overflows (§M.3). */
-.thino-files-card-toggle {
-  display: block;
-  margin-top: var(--size-2-2);
-  padding: 0;
+/* Show more / Show less toggle — only rendered when the body overflows (§M.3).
+   Styled as a plain colored-text link: override Obsidian's button hover/focus/
+   active states (more specific than the base rule) so no box ever appears. */
+/* Parent-qualified (.thino-files-card …) to out-specify Obsidian's scoped
+   `button` rules — otherwise the native gray box shows in the default state. */
+.thino-files-card .thino-files-card-toggle,
+.thino-files-card .thino-files-card-toggle:hover,
+.thino-files-card .thino-files-card-toggle:focus,
+.thino-files-card .thino-files-card-toggle:focus-visible,
+.thino-files-card .thino-files-card-toggle:active {
   background: transparent;
   box-shadow: none;
+  border: none;
+}
+
+.thino-files-card .thino-files-card-toggle {
+  display: block;
+  width: fit-content;
+  margin-top: var(--size-2-2);
+  padding: 0;
   color: var(--text-accent);
   font-size: var(--font-ui-small);
+  text-decoration: none;
   cursor: pointer;
+}
+
+.thino-files-card .thino-files-card-toggle:hover {
+  color: var(--text-accent-hover);
+  text-decoration: underline;
 }
 
 /* Inline editor */
