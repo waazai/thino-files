@@ -32,7 +32,7 @@ Covers AC O.1 (batch size), O.7 (clamp), O.11 (fixed constant).
 
 ## Phase 2 — Core infinite scroll
 
-### T2 — Batched render + IntersectionObserver append  `[ ]`
+### T2 — Batched render + IntersectionObserver append  `[x]`
 Covers AC O.1–O.5, O.9, O.10. Complete usable scroll path.
 
 - [ ] Add fields to `TimelineView`: `private revealed = 0;`,
