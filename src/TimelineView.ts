@@ -24,6 +24,7 @@ import { FilterBar } from "./FilterBar";
 import { matchPost, matchScope, parseQuery, type PostQuery, type PostScope } from "./filter";
 import { extractImageEmbeds } from "./media-grid";
 import type ThinoFilesPlugin from "./main";
+import { clampReveal, growReveal, hasMore, initialReveal } from "./pagination";
 import { PostCard } from "./PostCard";
 import { Sidebar } from "./Sidebar";
 import type { Post } from "./types";
@@ -52,6 +53,13 @@ export class TimelineView extends ItemView {
   /** Calendar day filter (YYYY-MM-DD), ANDed with the filter bar (AC §A.4). */
   private selectedDay: string | null = null;
   private sidebarHidden = false;
+
+  /** §2.O incremental render state. `visiblePosts` is the current filtered list;
+   * `revealed` cards of it are in the DOM; the sentinel + observer reveal more. */
+  private visiblePosts: Post[] = [];
+  private revealed = 0;
+  private observer: IntersectionObserver | null = null;
+  private sentinelEl: HTMLElement | null = null;
 
   constructor(leaf: WorkspaceLeaf, private plugin: ThinoFilesPlugin) {
     super(leaf);
@@ -165,7 +173,7 @@ export class TimelineView extends ItemView {
   async refresh(): Promise<void> {
     this.posts = await listPosts(this.vault, this.plugin.settings);
     this.updateSidebar();
-    this.renderList();
+    this.renderList({ preserve: true });
   }
 
   /** Push the current posts + active-source state into the sidebar. */
@@ -178,7 +186,16 @@ export class TimelineView extends ItemView {
     );
   }
 
-  private renderList(): void {
+  /**
+   * @param opts.preserve §2.O: a *data* refresh (disk watcher, source switch,
+   * composer post, card flag change) keeps the user where they are — it holds
+   * the revealed count (AC O.7) and restores the scroll offset. The default
+   * (filter / scope / day change) resets to the newest batch at the top (O.6).
+   */
+  private renderList(opts: { preserve?: boolean } = {}): void {
+    const prevScroll = this.listEl.scrollTop;
+    const prevRevealed = this.revealed;
+    this.removeSentinel();
     this.listEl.empty();
     const inScope = this.posts.filter((p) => matchScope(p, this.listScope));
     const visible = inScope.filter(
@@ -202,9 +219,69 @@ export class TimelineView extends ItemView {
       });
       return;
     }
-    for (const post of visible) {
+    // §2.O: render the newest batch only; the sentinel reveals more on scroll.
+    this.visiblePosts = visible;
+    this.revealed = opts.preserve
+      ? clampReveal(prevRevealed, visible.length)
+      : initialReveal(visible.length);
+    for (const post of visible.slice(0, this.revealed)) {
       this.createCard(post, this.listEl);
     }
+    this.installSentinel();
+    // Resets jump to top (O.6); preserves keep the prior scroll offset (O.7).
+    this.listEl.scrollTop = opts.preserve ? prevScroll : 0;
+  }
+
+  /**
+   * §2.O: reveal the next batch when the user scrolls near the bottom. Cards are
+   * appended after the existing ones — already-rendered cards (and their §M
+   * expand state) are untouched. Re-installing the sentinel re-observes it, so a
+   * sentinel that is still in view fires the callback again and self-fills the
+   * viewport (AC O.5) until posts are exhausted (AC O.3).
+   */
+  private appendBatch(): void {
+    const total = this.visiblePosts.length;
+    if (!hasMore(this.revealed, total)) {
+      this.removeSentinel();
+      return;
+    }
+    const start = this.revealed;
+    this.revealed = growReveal(this.revealed, total);
+    this.removeSentinel();
+    for (const post of this.visiblePosts.slice(start, this.revealed)) {
+      this.createCard(post, this.listEl);
+    }
+    this.installSentinel();
+  }
+
+  /** Add the scroll sentinel + observer when posts remain hidden (AC O.4). */
+  private installSentinel(): void {
+    if (!hasMore(this.revealed, this.visiblePosts.length)) return;
+    this.sentinelEl = this.listEl.createDiv({ cls: "thino-files-sentinel" });
+    this.observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) this.appendBatch();
+      },
+      { root: this.listEl, rootMargin: "200px" }
+    );
+    this.observer.observe(this.sentinelEl);
+  }
+
+  /** Tear down the sentinel + its observer (AC O.3/O.10). */
+  private removeSentinel(): void {
+    this.disconnectObserver();
+    this.sentinelEl?.remove();
+    this.sentinelEl = null;
+  }
+
+  private disconnectObserver(): void {
+    this.observer?.disconnect();
+    this.observer = null;
+  }
+
+  /** Release the scroll observer when the leaf closes (AC O.10). */
+  async onClose(): Promise<void> {
+    this.disconnectObserver();
   }
 
   /**
@@ -265,8 +342,9 @@ export class TimelineView extends ItemView {
         const i = this.posts.findIndex((x) => x.path === p.path);
         if (i >= 0) this.posts[i] = saved;
         // The card likely left the current scope — re-render list + counts.
+        // Preserve scroll/reveal so acting on a deep card doesn't jump to top.
         this.updateSidebar();
-        this.renderList();
+        this.renderList({ preserve: true });
         return saved;
       },
       deleteForever: async (p) => {

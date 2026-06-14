@@ -94,3 +94,34 @@ deleted: true                  # optional — shows only in the recycle bin
 
 The post body in plain GFM.
 ```
+
+### Code layout
+
+| Module | Responsibility |
+|---|---|
+| `src/main.ts` | Plugin entry — view/command/settings registration |
+| `src/TimelineView.ts` | Timeline leaf: layout, composer + filter bar + card list, scopes, vault watcher |
+| `src/Sidebar.ts` | Source-folder dropdown, status counters, heatmap, month calendar, scope switcher |
+| `src/stats.ts` | Pure aggregation: posts per day, counters, heatmap buckets, calendar grid |
+| `src/PostCard.ts` | One card: render, edit mode, scope-dependent actions, checkbox binding |
+| `src/Composer.ts` / `src/FilterBar.ts` | Top compose box / filter input + chips |
+| `src/media.ts` | Paste/drop binding for textareas → save asset, insert link |
+| `src/media-grid.ts` | Pure image-embed extraction for the Media grid scope |
+| `src/fileManager.ts` | Filename/slug/asset helpers + create/list/update/flag/trash via narrow vault interfaces |
+| `src/frontmatter.ts` | Dependency-free YAML frontmatter serialize/parse (fixed schema) |
+| `src/filter.ts` | `parseQuery` / `matchPost` query logic |
+| `src/settings.ts` | Settings tab + type-checked settings merge |
+
+Pure logic is kept free of `obsidian` imports (the npm package is types-only), so the unit suite runs without the app; vault operations go through small interfaces faked in `tests/`.
+
+## Settings
+
+| Setting | Default | Effect |
+|---|---|---|
+| Active source folder | `thino` | Which configured source folder the timeline currently reads from and posts into |
+| Source folders | `[thino]` | Capture folders you can switch between. **Add folder** opens a vault-folder picker; each row has a remove button (the last one can't be removed) |
+| Assets folder | `thino/assets` | Where pasted/dropped media is stored; excluded from the timeline |
+| Filename date format | `YYYY-MM-DD` | Date prefix for new filenames |
+| Require slug on post | off | Block posting until a slug is entered |
+| Open in new pane | off | Open source files in a new tab |
+| Date display format | `YYYY-MM-DD HH:mm` | Card date chip format |
