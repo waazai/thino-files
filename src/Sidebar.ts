@@ -1,5 +1,6 @@
 import { setIcon } from "obsidian";
 import { matchScope, type PostScope } from "./filter";
+import { extractImageEmbeds } from "./media-grid";
 import {
   calendarGrid,
   computeStatus,
@@ -12,6 +13,8 @@ export interface SidebarCallbacks {
   onScopeChange: (scope: PostScope) => void;
   /** Day filter toggled from the calendar; null clears it (AC §A.4). */
   onDaySelect: (day: string | null) => void;
+  /** Active source folder picked from the top-of-sidebar dropdown (AC §I.3). */
+  onSourceChange: (folder: string) => void;
 }
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -23,6 +26,7 @@ const MONTHS = [
 /** Left sidebar (SPEC §2.A): status counters, heatmap, calendar, scope list. */
 export class Sidebar {
   readonly el: HTMLElement;
+  private sourceEl: HTMLElement;
   private statusEl: HTMLElement;
   private heatmapEl: HTMLElement;
   private calendarEl: HTMLElement;
@@ -39,6 +43,8 @@ export class Sidebar {
     private today: Date = new Date()
   ) {
     this.el = parent.createDiv({ cls: "thino-files-sidebar" });
+    // Source-folder dropdown sits above the stats (AC §I.1).
+    this.sourceEl = this.el.createDiv({ cls: "thino-files-source" });
     this.statusEl = this.el.createDiv({ cls: "thino-files-status" });
     this.heatmapEl = this.el.createDiv({ cls: "thino-files-heatmap" });
     this.calendarEl = this.el.createDiv({ cls: "thino-files-calendar" });
@@ -47,16 +53,41 @@ export class Sidebar {
   }
 
   /** Re-render from the full post list; called on every view refresh (AC §A.5). */
-  update(posts: Post[], scope: PostScope): void {
+  update(
+    posts: Post[],
+    scope: PostScope,
+    sourceFolders: string[],
+    activeFolder: string
+  ): void {
     this.posts = posts;
     this.scope = scope;
     // Stats/heatmap/calendar count only non-deleted posts (AC §C.5).
     const counted = posts.filter((p) => !p.deleted);
     const perDay = postsPerDay(counted);
+    this.renderSource(sourceFolders, activeFolder);
     this.renderStatus(counted);
     this.renderHeatmap(perDay);
     this.renderCalendar(perDay);
     this.renderScopes();
+  }
+
+  /** Source-folder selector above the stats; always shown (AC §I.1, I.2). */
+  private renderSource(folders: string[], active: string): void {
+    this.sourceEl.empty();
+    this.sourceEl.createSpan({ cls: "thino-files-source-label", text: "Source" });
+    const select = this.sourceEl.createEl("select", {
+      cls: "dropdown thino-files-source-select",
+      attr: { "aria-label": "Source folder" },
+    });
+    // Ignore transient blank rows still being edited in settings.
+    const options = [...new Set(folders.map((f) => f.trim()).filter(Boolean))];
+    for (const folder of options) {
+      const opt = select.createEl("option", { text: folder, value: folder });
+      if (folder === active) opt.selected = true;
+    }
+    select.addEventListener("change", () =>
+      this.callbacks.onSourceChange(select.value)
+    );
   }
 
   private renderStatus(counted: Post[]): void {
@@ -136,11 +167,19 @@ export class Sidebar {
     this.scopesEl.empty();
     const scopes: { scope: PostScope; icon: string; label: string }[] = [
       { scope: "timeline", icon: "messages-square", label: "Timeline" },
+      { scope: "media", icon: "image", label: "Media" },
       { scope: "archived", icon: "archive", label: "Archived" },
       { scope: "trash", icon: "trash-2", label: "Recycle bin" },
     ];
     for (const { scope, icon, label } of scopes) {
-      const count = this.posts.filter((p) => matchScope(p, scope)).length;
+      // Media counts image embeds across qualifying posts (AC §F.1); other
+      // scopes count posts.
+      const count =
+        scope === "media"
+          ? this.posts
+              .filter((p) => matchScope(p, "media"))
+              .reduce((sum, p) => sum + extractImageEmbeds(p.body).length, 0)
+          : this.posts.filter((p) => matchScope(p, scope)).length;
       const row = this.scopesEl.createDiv({ cls: "thino-files-scope-row" });
       row.toggleClass("is-active", scope === this.scope);
       const iconEl = row.createSpan({ cls: "thino-files-scope-icon" });

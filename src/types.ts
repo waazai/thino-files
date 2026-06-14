@@ -17,26 +17,29 @@ export interface Post extends PostFrontmatter {
   body: string;
 }
 
-export type ViewMode = "timeline" | "folders";
-
 export interface ThinoFilesSettings {
+  /**
+   * The **active** source folder — the one currently shown (SPEC §2.G). Always
+   * one of `sourceFolders`. All CRUD/listing/watching operates on this folder,
+   * so its single-string shape is unchanged from earlier versions.
+   */
   postsFolder: string;
+  /** Configured source folders; exactly one (`postsFolder`) is active. */
+  sourceFolders: string[];
   /** Media folder (SPEC §2.B) — excluded from post listing. */
   assetsFolder: string;
   filenameDateFormat: string;
   requireSlug: boolean;
   openInNewPane: boolean;
   dateDisplayFormat: string;
-  /** Flat timeline vs folder-grouped list (SPEC §2.D); persisted. */
-  viewMode: ViewMode;
 }
 
 export const DEFAULT_SETTINGS: ThinoFilesSettings = {
   postsFolder: "thino",
+  sourceFolders: ["thino"],
   assetsFolder: "thino/assets",
   filenameDateFormat: "YYYY-MM-DD",
   requireSlug: false,
   openInNewPane: false,
   dateDisplayFormat: "YYYY-MM-DD HH:mm",
-  viewMode: "timeline",
 };

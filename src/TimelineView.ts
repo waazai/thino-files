@@ -13,7 +13,7 @@ import {
   buildMarkdownLink,
   createPost,
   deletePost,
-  groupByFolder,
+  formatDate,
   listPosts,
   normalizeFolder,
   saveAsset,
@@ -22,20 +22,29 @@ import {
 } from "./fileManager";
 import { FilterBar } from "./FilterBar";
 import { matchPost, matchScope, parseQuery, type PostQuery, type PostScope } from "./filter";
+import { extractImageEmbeds } from "./media-grid";
 import type ThinoFilesPlugin from "./main";
 import { PostCard } from "./PostCard";
 import { Sidebar } from "./Sidebar";
-import type { Post, ViewMode } from "./types";
+import type { Post } from "./types";
 
 /** Container width (px) under which the sidebar auto-collapses (AC §A.1). */
 const NARROW_WIDTH = 600;
+
+/** Markdown image targets URL-encode spaces; decode for linkpath resolution. */
+function decodeLinkpath(target: string): string {
+  try {
+    return decodeURIComponent(target);
+  } catch {
+    return target;
+  }
+}
 
 export const VIEW_TYPE_THINO_FILES = "thino-files-timeline";
 
 export class TimelineView extends ItemView {
   private layoutEl!: HTMLElement;
   private listEl!: HTMLElement;
-  private viewToggleEl!: HTMLElement;
   private sidebar!: Sidebar;
   private posts: Post[] = [];
   private query: PostQuery = parseQuery("");
@@ -43,8 +52,6 @@ export class TimelineView extends ItemView {
   /** Calendar day filter (YYYY-MM-DD), ANDed with the filter bar (AC §A.4). */
   private selectedDay: string | null = null;
   private sidebarHidden = false;
-  /** Session-only collapsed state of folder-view groups (AC §D.3). */
-  private collapsedGroups = new Set<string>();
 
   constructor(leaf: WorkspaceLeaf, private plugin: ThinoFilesPlugin) {
     super(leaf);
@@ -75,12 +82,17 @@ export class TimelineView extends ItemView {
     this.sidebar = new Sidebar(this.layoutEl, {
       onScopeChange: (scope) => {
         this.listScope = scope;
-        this.sidebar.update(this.posts, this.listScope);
+        this.updateSidebar();
         this.renderList();
       },
       onDaySelect: (day) => {
         this.selectedDay = day;
         this.renderList();
+      },
+      onSourceChange: (folder) => {
+        this.plugin.settings.postsFolder = folder;
+        void this.plugin.saveSettings();
+        void this.refresh();
       },
     });
     const main = this.layoutEl.createDiv({ cls: "thino-files-main" });
@@ -106,8 +118,6 @@ export class TimelineView extends ItemView {
       this.sidebarHidden = !this.sidebarHidden;
       this.applySidebarVisibility();
     });
-    this.viewToggleEl = toolbar.createDiv({ cls: "thino-files-viewtoggle" });
-    this.renderViewToggle();
 
     new FilterBar(main, (query) => {
       this.query = query;
@@ -154,32 +164,18 @@ export class TimelineView extends ItemView {
   /** Reload posts from disk and re-render list + sidebar (AC §A.5). */
   async refresh(): Promise<void> {
     this.posts = await listPosts(this.vault, this.plugin.settings);
-    this.sidebar.update(this.posts, this.listScope);
+    this.updateSidebar();
     this.renderList();
   }
 
-  /** Timeline ⇄ folders segmented toggle; the choice persists (AC §D.1). */
-  private renderViewToggle(): void {
-    this.viewToggleEl.empty();
-    const modes: { mode: ViewMode; icon: string; label: string }[] = [
-      { mode: "timeline", icon: "list", label: "Timeline view" },
-      { mode: "folders", icon: "folder", label: "Folder view" },
-    ];
-    for (const { mode, icon, label } of modes) {
-      const btn = this.viewToggleEl.createEl("button", {
-        cls: "thino-files-viewtoggle-btn clickable-icon",
-        attr: { "aria-label": label, title: label },
-      });
-      setIcon(btn, icon);
-      btn.toggleClass("is-active", this.plugin.settings.viewMode === mode);
-      btn.addEventListener("click", () => {
-        if (this.plugin.settings.viewMode === mode) return;
-        this.plugin.settings.viewMode = mode;
-        void this.plugin.saveSettings();
-        this.renderViewToggle();
-        this.renderList();
-      });
-    }
+  /** Push the current posts + active-source state into the sidebar. */
+  private updateSidebar(): void {
+    this.sidebar.update(
+      this.posts,
+      this.listScope,
+      this.plugin.settings.sourceFolders,
+      this.plugin.settings.postsFolder
+    );
   }
 
   private renderList(): void {
@@ -190,6 +186,11 @@ export class TimelineView extends ItemView {
         matchPost(p, this.query) &&
         (!this.selectedDay || p.date.slice(0, 10) === this.selectedDay)
     );
+    // Media scope renders a grid of embeds, with its own empty state (AC §F.6).
+    if (this.listScope === "media") {
+      this.renderMediaGrid(visible);
+      return;
+    }
     if (visible.length === 0) {
       this.listEl.createDiv({
         cls: "thino-files-empty",
@@ -201,48 +202,47 @@ export class TimelineView extends ItemView {
       });
       return;
     }
-    if (this.plugin.settings.viewMode === "folders") {
-      this.renderGroups(visible);
-      return;
-    }
     for (const post of visible) {
       this.createCard(post, this.listEl);
     }
   }
 
-  /** Folder view: collapsible group per subfolder, post counts (AC §D.3). */
-  private renderGroups(visible: Post[]): void {
-    const folder = normalizeFolder(this.plugin.settings.postsFolder);
-    for (const group of groupByFolder(visible, folder)) {
-      const groupEl = this.listEl.createDiv({ cls: "thino-files-group" });
-      const headerEl = groupEl.createDiv({ cls: "thino-files-group-header" });
-      const chevron = headerEl.createSpan({ cls: "thino-files-group-chevron" });
-      headerEl.createSpan({ cls: "thino-files-group-name", text: group.name });
-      headerEl.createSpan({
-        cls: "thino-files-group-count",
-        text: String(group.posts.length),
-      });
-      const bodyEl = groupEl.createDiv({ cls: "thino-files-group-body" });
-
-      const apply = (): void => {
-        const collapsed = this.collapsedGroups.has(group.name);
-        setIcon(chevron, collapsed ? "chevron-right" : "chevron-down");
-        bodyEl.toggle(!collapsed);
-      };
-      headerEl.addEventListener("click", () => {
-        if (this.collapsedGroups.has(group.name)) {
-          this.collapsedGroups.delete(group.name);
-        } else {
-          this.collapsedGroups.add(group.name);
-        }
-        apply();
-      });
-
-      for (const post of group.posts) {
-        this.createCard(post, bodyEl);
+  /**
+   * Media grid (AC §F): one tile per image embed found in the visible posts,
+   * newest post first, embeds in body order. Each tile opens its source post.
+   */
+  private renderMediaGrid(visible: Post[]): void {
+    const grid = this.listEl.createDiv({ cls: "thino-files-media-grid" });
+    let tiles = 0;
+    for (const post of visible) {
+      for (const target of extractImageEmbeds(post.body)) {
+        const file = this.app.metadataCache.getFirstLinkpathDest(
+          decodeLinkpath(target),
+          post.path
+        );
+        if (!(file instanceof TFile)) continue;
+        const tile = grid.createDiv({
+          cls: "thino-files-media-tile",
+          attr: { title: this.displayDate(post.date) },
+        });
+        tile.createEl("img", {
+          attr: { src: this.vault.getResourcePath(file), loading: "lazy" },
+        });
+        tile.addEventListener("click", () => void this.openPost(post));
+        tiles++;
       }
-      apply();
     }
+    if (tiles === 0) {
+      grid.remove();
+      this.listEl.createDiv({ cls: "thino-files-empty", text: "No media yet." });
+    }
+  }
+
+  /** Card date chip formatting, shared with media tile tooltips. */
+  private displayDate(date: string): string {
+    const d = new Date(date);
+    if (!date || isNaN(d.getTime())) return date;
+    return formatDate(d, this.plugin.settings.dateDisplayFormat);
   }
 
   private createCard(post: Post, parent: HTMLElement): PostCard {
@@ -265,14 +265,14 @@ export class TimelineView extends ItemView {
         const i = this.posts.findIndex((x) => x.path === p.path);
         if (i >= 0) this.posts[i] = saved;
         // The card likely left the current scope — re-render list + counts.
-        this.sidebar.update(this.posts, this.listScope);
+        this.updateSidebar();
         this.renderList();
         return saved;
       },
       deleteForever: async (p) => {
         await deletePost(this.vault, p.path);
         this.posts = this.posts.filter((x) => x.path !== p.path);
-        this.sidebar.update(this.posts, this.listScope);
+        this.updateSidebar();
       },
       attach: (file) => this.attachFile(file),
     });

@@ -340,31 +340,3 @@ export function insertAtCursor(
   };
 }
 
-export interface PostGroup {
-  name: string;
-  posts: Post[];
-}
-
-/**
- * Folder-view grouping (AC §D.3): key = first path segment under the posts
- * folder; direct children fall under the posts folder's own name. Groups are
- * alphabetical; post order within a group is preserved from the input.
- */
-export function groupByFolder(posts: Post[], postsFolder: string): PostGroup[] {
-  const folder = normalizeFolder(postsFolder);
-  const rootName = folder ? folder.split("/").pop()! : "/";
-  const byName = new Map<string, Post[]>();
-  for (const post of posts) {
-    const rel = folder && isWithinFolder(folder, post.path)
-      ? post.path.slice(folder.length + 1)
-      : post.path;
-    const slash = rel.indexOf("/");
-    const name = slash === -1 ? rootName : rel.slice(0, slash);
-    let group = byName.get(name);
-    if (!group) byName.set(name, (group = []));
-    group.push(post);
-  }
-  return [...byName.entries()]
-    .map(([name, groupPosts]) => ({ name, posts: groupPosts }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-}

@@ -6,10 +6,11 @@ An [Obsidian](https://obsidian.md) plugin with a Twitter-style timeline where **
 
 - **Quick capture** — compose box at the top of the timeline; post with the button or `Cmd/Ctrl+Enter`. Optional title/slug and comma-separated tags.
 - **One file per post** — files land in a configurable folder (default `thino/`) as `YYYY-MM-DD-{slug}.md`; a blank slug falls back to a `HHmmss` time suffix, and name collisions get `-2`, `-3`, …
-- **Timeline view** — newest-first cards with a date chip, tag pills, and the GFM-rendered body. Reads the configured folder (subfolders included), never the whole vault.
-- **Folder view** — toggle in the header switches to cards grouped under collapsible per-subfolder headers; the choice persists.
+- **Timeline view** — newest-first cards with a date chip, tag pills, and the GFM-rendered body. Reads the active source folder (subfolders included, flat), never the whole vault.
 - **Sidebar** — status counters (posts / tags / active days), a 12-week activity heatmap, and a month calendar; clicking a day filters the list (click again to clear). Collapses automatically in narrow panes.
-- **Archive & recycle bin** — archiving or deleting a post only sets an `archived:`/`deleted:` frontmatter flag, so files never move and links never break. Sidebar scopes switch between Timeline, Archived, and Recycle bin; the bin offers restore and a confirmed "delete forever" (`vault.trash`).
+- **Media grid** — a **Media** sidebar scope shows every image embedded in your posts as a thumbnail grid; clicking a tile opens its source post. Obeys the filter bar and calendar day filter.
+- **Multiple source folders** — add capture folders with an in-app folder picker, then switch which one is active via the **dropdown at the top of the sidebar** (or the settings tab); exactly one is shown at a time, and all posting/listing/watching follows the active folder.
+- **Archive & recycle bin** — archiving or deleting a post only sets an `archived:`/`deleted:` frontmatter flag, so files never move and links never break. Sidebar scopes switch between Timeline, Media, Archived, and Recycle bin; the bin offers restore and a confirmed "delete forever" (`vault.trash`).
 - **Media attachments** — paste or drop a file into the compose box or a card editor; the binary is saved to a configurable assets folder and `![name](path)` / `[name](path)` is inserted at the cursor. Existing assets are never overwritten.
 - **Live refresh** — files added, changed, or removed outside the plugin show up within ~2 s (debounced vault watcher).
 - **Card actions** — edit in place (`Cmd/Ctrl+Enter` saves and bumps `updated`, `Esc` cancels), open the source file (cursor at line 1), archive, delete to the recycle bin with confirmation.
@@ -46,7 +47,8 @@ Post body goes here. Full **GFM** supported.
 
 | Setting | Default | Effect |
 |---|---|---|
-| Posts folder | `thino` | Folder the timeline reads from and posts into |
+| Active source folder | `thino` | Which configured source folder the timeline currently reads from and posts into |
+| Source folders | `[thino]` | Capture folders you can switch between. **Add folder** opens a vault-folder picker; each row has a remove button (the last one can't be removed) |
 | Assets folder | `thino/assets` | Where pasted/dropped media is stored; excluded from the timeline |
 | Filename date format | `YYYY-MM-DD` | Date prefix for new filenames |
 | Require slug on post | off | Block posting until a slug is entered |
@@ -69,12 +71,13 @@ For a fast loop, symlink `<vault>/.obsidian/plugins/thino-files` to this repo an
 | Module | Responsibility |
 |---|---|
 | `src/main.ts` | Plugin entry — view/command/settings registration |
-| `src/TimelineView.ts` | Timeline leaf: layout, composer + filter bar + card list/groups, scopes, vault watcher |
-| `src/Sidebar.ts` | Status counters, heatmap, month calendar, scope switcher |
+| `src/TimelineView.ts` | Timeline leaf: layout, composer + filter bar + card list, scopes, vault watcher |
+| `src/Sidebar.ts` | Source-folder dropdown, status counters, heatmap, month calendar, scope switcher |
 | `src/stats.ts` | Pure aggregation: posts per day, counters, heatmap buckets, calendar grid |
 | `src/PostCard.ts` | One card: render, edit mode, scope-dependent actions, checkbox binding |
 | `src/Composer.ts` / `src/FilterBar.ts` | Top compose box / filter input + chips |
 | `src/media.ts` | Paste/drop binding for textareas → save asset, insert link |
+| `src/media-grid.ts` | Pure image-embed extraction for the Media grid scope |
 | `src/fileManager.ts` | Filename/slug/asset helpers + create/list/update/flag/trash via narrow vault interfaces |
 | `src/frontmatter.ts` | Dependency-free YAML frontmatter serialize/parse (fixed schema) |
 | `src/filter.ts` | `parseQuery` / `matchPost` query logic |

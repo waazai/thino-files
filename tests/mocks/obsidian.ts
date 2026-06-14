@@ -16,6 +16,12 @@ export class Plugin {}
 export class ItemView {}
 export class PluginSettingTab {}
 export class Setting {}
+export class FuzzySuggestModal {
+  constructor(_app: unknown) {}
+  setPlaceholder(): void {}
+  open(): void {}
+  close(): void {}
+}
 export class Notice {
   constructor(public message: string) {}
 }

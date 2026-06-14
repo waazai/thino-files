@@ -28,12 +28,16 @@ export function parseQuery(input: string): PostQuery {
   return query;
 }
 
-/** List scopes (SPEC §2.C): default timeline, archived box, recycle bin. */
-export type PostScope = "timeline" | "archived" | "trash";
+/**
+ * List scopes: default timeline, archived box, recycle bin (SPEC §2.C), and
+ * the media grid (SPEC §2.F — qualifies the same posts as timeline).
+ */
+export type PostScope = "timeline" | "archived" | "trash" | "media";
 
 export function matchScope(post: Post, scope: PostScope): boolean {
   if (scope === "trash") return post.deleted === true;
   if (scope === "archived") return post.archived === true && !post.deleted;
+  // "timeline" and "media" both show active (non-archived, non-deleted) posts.
   return !post.archived && !post.deleted;
 }
 

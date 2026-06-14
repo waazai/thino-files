@@ -28,6 +28,10 @@ export class PostCard {
   readonly el: HTMLElement;
   private bodyEl: HTMLElement;
   protected actionsEl: HTMLElement;
+  /** Show more/less control — present only while the body overflows (§M.3). */
+  private toggleEl: HTMLElement | null = null;
+  /** Per-card expand state; ephemeral — a fresh card collapses again (§M.8). */
+  private expanded = false;
 
   constructor(
     parent: HTMLElement,
@@ -82,6 +86,40 @@ export class PostCard {
       this.ctx.component
     );
     this.bindTaskCheckboxes();
+    this.applyCollapse();
+  }
+
+  /**
+   * Clamp the body to a fixed height and, only when it overflows, render a
+   * Show more/Show less toggle (AC §M.3–M.4). Runs after every body render so
+   * the task-toggle and edit-exit re-renders stay consistent (§M.6); the expand
+   * state persists across those re-renders within the same card.
+   */
+  private applyCollapse(): void {
+    this.toggleEl?.remove();
+    this.toggleEl = null;
+
+    // Measure against the clamp regardless of state, so we can decide whether a
+    // toggle is needed even while expanded (clamp-off can't reveal overflow).
+    this.bodyEl.addClass("is-collapsed");
+    const overflowing = this.bodyEl.scrollHeight > this.bodyEl.clientHeight;
+    if (!overflowing) {
+      this.bodyEl.removeClass("is-collapsed");
+      return;
+    }
+
+    this.bodyEl.toggleClass("is-collapsed", !this.expanded);
+    this.toggleEl = this.el.createEl("button", {
+      cls: "thino-files-card-toggle",
+      text: this.expanded ? "Show less" : "Show more",
+    });
+    this.toggleEl.addEventListener("click", () => {
+      this.expanded = !this.expanded;
+      this.bodyEl.toggleClass("is-collapsed", !this.expanded);
+      if (this.toggleEl) {
+        this.toggleEl.textContent = this.expanded ? "Show less" : "Show more";
+      }
+    });
   }
 
   /** Make rendered `- [ ]` checkboxes toggle the underlying file line. */
@@ -161,6 +199,11 @@ export class PostCard {
   /** Swap the rendered body for a textarea; save on Cmd/Ctrl+Enter, cancel on Esc. */
   private enterEditMode(): void {
     if (this.el.querySelector(".thino-files-card-editor")) return;
+    // The textarea must not be clamped/faded; drop collapse state for edit (§M.7).
+    // renderBody() re-applies it on save/cancel.
+    this.toggleEl?.remove();
+    this.toggleEl = null;
+    this.bodyEl.removeClass("is-collapsed");
     this.bodyEl.empty();
 
     const editor = this.bodyEl.createEl("textarea", {

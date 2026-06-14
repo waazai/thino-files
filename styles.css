@@ -46,6 +46,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--size-2-2);
+  /* AC §E.1: breathing gap so the search input/chips never touch the first post. */
+  margin-bottom: var(--size-4-2);
 }
 
 .thino-files-filter-input {
@@ -81,9 +83,39 @@
   color: var(--text-error);
 }
 
-/* Timeline list */
+/* Media grid (SPEC §2.F) */
+.thino-files-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--size-2-3);
+  padding-bottom: var(--size-4-4);
+}
+
+.thino-files-media-tile {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--background-secondary);
+  cursor: pointer;
+}
+
+.thino-files-media-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 120ms ease;
+}
+
+.thino-files-media-tile:hover img {
+  transform: scale(1.04);
+}
+
+/* Timeline list — the only scrolling region (AC §L.1/L.3). min-height:0 lets a
+   flex child actually shrink so overflow-y engages instead of growing the view. */
 .thino-files-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -166,6 +198,35 @@
   margin-bottom: 0;
 }
 
+/* Collapsed body: fixed ~8em clamp so a card is roughly composer height, with a
+   bottom fade hinting at clipped content (AC §M.2). Expanding removes the class. */
+.thino-files-card-body.is-collapsed {
+  max-height: 8em;
+  overflow: hidden;
+  position: relative;
+}
+
+.thino-files-card-body.is-collapsed::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2.5em;
+  background: linear-gradient(to bottom, transparent, var(--background-primary));
+  pointer-events: none;
+}
+
+/* Show more / Show less toggle — only rendered when the body overflows (§M.3). */
+.thino-files-card-toggle {
+  display: block;
+  margin-top: var(--size-2-2);
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-accent);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+
 /* Inline editor */
 .thino-files-card-editor {
   width: 100%;
@@ -200,38 +261,20 @@
   margin-bottom: var(--size-2-3);
 }
 
-.thino-files-viewtoggle {
+/* Source-folder selector at the top of the sidebar (SPEC §2.I) */
+.thino-files-source {
   display: flex;
+  flex-direction: column;
   gap: var(--size-2-1);
 }
 
-.thino-files-viewtoggle-btn.is-active {
-  color: var(--interactive-accent);
-  background: var(--background-modifier-hover);
-}
-
-/* Folder view groups */
-.thino-files-group-header {
-  display: flex;
-  align-items: center;
-  gap: var(--size-2-2);
-  padding: var(--size-2-2) 0;
-  cursor: pointer;
-  font-weight: var(--font-semibold);
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.thino-files-group-chevron {
-  display: flex;
-  align-items: center;
-}
-
-.thino-files-group-count {
+.thino-files-source-label {
   font-size: var(--font-ui-smaller);
-  background: var(--background-secondary);
-  border-radius: var(--radius-s);
-  padding: 0 var(--size-2-2);
+  color: var(--text-muted);
+}
+
+.thino-files-source-select {
+  width: 100%;
 }
 
 /* Two-column layout: sidebar + main (SPEC §2.A) */
@@ -255,9 +298,15 @@
   display: none;
 }
 
+/* Height-bound flex column so only the list scrolls; the composer, toolbar, and
+   filter bar stay pinned and the sidebar no longer drifts (AC §L.1–L.3). */
 .thino-files-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Status counters */

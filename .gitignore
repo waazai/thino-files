@@ -1,2 +1,17 @@
+# Dependencies
 node_modules/
+
+# Build output — produced by `npm run build`; ship via GitHub Release assets
 main.js
+main.js.map
+
+# Obsidian plugin runtime data (created when this repo is symlinked into a vault)
+data.json
+
+# Test coverage
+coverage/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log

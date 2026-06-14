@@ -30,4 +30,48 @@ describe("mergeSettings", () => {
     expect(merged).toEqual(DEFAULT_SETTINGS);
     expect("bogus" in merged).toBe(false);
   });
+
+  // SPEC §2.G — multiple source folders, one active.
+  it("seeds sourceFolders from a legacy postsFolder-only config (AC G.4)", () => {
+    const merged = mergeSettings({ postsFolder: "journal" });
+    expect(merged.sourceFolders).toEqual(["journal"]);
+    expect(merged.postsFolder).toBe("journal");
+  });
+
+  it("keeps a valid sourceFolders array and active folder", () => {
+    const merged = mergeSettings({
+      sourceFolders: ["thino", "work-log"],
+      postsFolder: "work-log",
+    });
+    expect(merged.sourceFolders).toEqual(["thino", "work-log"]);
+    expect(merged.postsFolder).toBe("work-log");
+  });
+
+  it("reconciles an active folder that is not in the list to the first entry", () => {
+    const merged = mergeSettings({
+      sourceFolders: ["a", "b"],
+      postsFolder: "missing",
+    });
+    expect(merged.postsFolder).toBe("a");
+  });
+
+  it("rejects a non-array sourceFolders and falls back to the active folder", () => {
+    const merged = mergeSettings({ sourceFolders: { 0: "x" }, postsFolder: "x" });
+    expect(merged.sourceFolders).toEqual(["x"]);
+  });
+
+  it("rejects arrays with non-string or empty entries", () => {
+    expect(mergeSettings({ sourceFolders: ["ok", 3], postsFolder: "ok" }).sourceFolders).toEqual(["ok"]);
+    expect(mergeSettings({ sourceFolders: ["ok", "  "], postsFolder: "ok" }).sourceFolders).toEqual(["ok"]);
+  });
+
+  it("trims source folder entries", () => {
+    const merged = mergeSettings({ sourceFolders: [" a ", "b"], postsFolder: "a" });
+    expect(merged.sourceFolders).toEqual(["a", "b"]);
+  });
+
+  it("defaults to [postsFolder] when the list is empty", () => {
+    const merged = mergeSettings({ sourceFolders: [], postsFolder: "thino" });
+    expect(merged.sourceFolders).toEqual(["thino"]);
+  });
 });
