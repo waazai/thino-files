@@ -19,6 +19,24 @@ export function sanitizeSlug(input: string): string {
   return input.replace(/[\\/:*?"<>|\x00-\x1f]/g, "").trim();
 }
 
+/**
+ * Tri-state overflow decision for the collapsible card body (§M.8a), from the
+ * body's measured `scrollHeight`/`clientHeight`:
+ *   - `true`  — content overflows the clamp → a Show more toggle is needed;
+ *   - `false` — content fits → no clamp, no toggle;
+ *   - `null`  — **unmeasurable**: the element is not laid out (detached or a
+ *     hidden leaf, the "jump to source file → back" case), so `clientHeight`
+ *     reads 0. The caller must keep the body clamped and re-measure once it
+ *     becomes visible — treating this as "fits" would wrongly expand the card.
+ */
+export function overflowState(
+  scrollHeight: number,
+  clientHeight: number
+): boolean | null {
+  if (clientHeight === 0) return null;
+  return scrollHeight > clientHeight;
+}
+
 /** Tiny token formatter supporting YYYY, MM, DD, HH, mm, ss. */
 export function formatDate(d: Date, format: string): string {
   return format

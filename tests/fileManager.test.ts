@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildFilename, formatDate, sanitizeSlug } from "../src/fileManager";
+import {
+  buildFilename,
+  formatDate,
+  overflowState,
+  sanitizeSlug,
+} from "../src/fileManager";
 
 const d = new Date(2026, 5, 12, 14, 30, 22);
 
@@ -25,6 +30,24 @@ describe("sanitizeSlug", () => {
   it("returns empty string for blank or all-illegal input", () => {
     expect(sanitizeSlug("   ")).toBe("");
     expect(sanitizeSlug("???")).toBe("");
+  });
+});
+
+describe("overflowState (§M.8a)", () => {
+  it("reports overflow when content exceeds the clamp", () => {
+    expect(overflowState(200, 128)).toBe(true);
+  });
+
+  it("reports no overflow when content fits the clamp", () => {
+    expect(overflowState(50, 128)).toBe(false);
+    expect(overflowState(128, 128)).toBe(false);
+  });
+
+  it("is unmeasurable (null) when the element is not laid out", () => {
+    // Detached / display:none leaf: clientHeight reads 0 — must NOT be treated
+    // as "fits" (which would clear the clamp and expand the card).
+    expect(overflowState(0, 0)).toBeNull();
+    expect(overflowState(200, 0)).toBeNull();
   });
 });
 

@@ -1,5 +1,11 @@
 import { type App, type Component, MarkdownRenderer, setIcon } from "obsidian";
-import { formatDate, type PostFlags, postSlug, toggleTaskInBody } from "./fileManager";
+import {
+  formatDate,
+  overflowState,
+  type PostFlags,
+  postSlug,
+  toggleTaskInBody,
+} from "./fileManager";
 import type { PostScope } from "./filter";
 import { type AttachFn, bindAttachments } from "./media";
 import type { Post, ThinoFilesSettings } from "./types";
@@ -32,6 +38,8 @@ export class PostCard {
   private toggleEl: HTMLElement | null = null;
   /** Per-card expand state; ephemeral — a fresh card collapses again (§M.8). */
   private expanded = false;
+  /** Pending re-measure while the card body is not yet laid out (§M.8a). */
+  private layoutObserver: ResizeObserver | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -99,16 +107,29 @@ export class PostCard {
    * Show more/Show less toggle (AC §M.3–M.4). Runs after every body render so
    * the task-toggle and edit-exit re-renders stay consistent (§M.6); the expand
    * state persists across those re-renders within the same card.
+   *
+   * The body must stay clamped when its overflow can't be measured — a detached
+   * or hidden leaf reports `clientHeight === 0` (the "jump to source file →
+   * back" case). Clearing the clamp there would render the card fully expanded
+   * with no toggle, so instead we keep it collapsed and re-measure once the
+   * element gains a real size (§M.8a).
    */
   private applyCollapse(): void {
     this.toggleEl?.remove();
     this.toggleEl = null;
+    this.disconnectLayoutObserver();
 
     // Measure against the clamp regardless of state, so we can decide whether a
     // toggle is needed even while expanded (clamp-off can't reveal overflow).
     this.bodyEl.addClass("is-collapsed");
-    const overflowing = this.bodyEl.scrollHeight > this.bodyEl.clientHeight;
-    if (!overflowing) {
+    const state = overflowState(this.bodyEl.scrollHeight, this.bodyEl.clientHeight);
+
+    if (state === null) {
+      // Not laid out yet — keep clamped and re-run once the body has a size.
+      this.observeForLayout();
+      return;
+    }
+    if (!state) {
       this.bodyEl.removeClass("is-collapsed");
       return;
     }
@@ -125,6 +146,27 @@ export class PostCard {
         this.toggleEl.textContent = this.expanded ? "Show less" : "Show more";
       }
     });
+  }
+
+  /**
+   * Re-run {@link applyCollapse} once the body becomes measurable (gains a
+   * non-zero height after the leaf is revealed/resized). No-op where
+   * ResizeObserver is unavailable (e.g. jsdom) — the body simply stays clamped.
+   */
+  private observeForLayout(): void {
+    if (this.layoutObserver || typeof ResizeObserver === "undefined") return;
+    this.layoutObserver = new ResizeObserver(() => {
+      if (this.bodyEl.clientHeight > 0) {
+        this.disconnectLayoutObserver();
+        this.applyCollapse();
+      }
+    });
+    this.layoutObserver.observe(this.bodyEl);
+  }
+
+  private disconnectLayoutObserver(): void {
+    this.layoutObserver?.disconnect();
+    this.layoutObserver = null;
   }
 
   /** Make rendered `- [ ]` checkboxes toggle the underlying file line. */
@@ -208,6 +250,7 @@ export class PostCard {
     // renderBody() re-applies it on save/cancel.
     this.toggleEl?.remove();
     this.toggleEl = null;
+    this.disconnectLayoutObserver();
     this.bodyEl.removeClass("is-collapsed");
     this.bodyEl.empty();
 
