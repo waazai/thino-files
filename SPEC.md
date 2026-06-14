@@ -649,6 +649,11 @@ grid (§F) is unaffected.
   body re-renders.
 - **AC M.8** Collapse state does not persist across `refresh()` / re-render;
   cards re-collapse by default (acceptable — no settings, no storage).
+- **AC M.9** The header shows a **title** = the filename slug, *verbatim* (no
+  humanizing). The slug is recovered by `postSlug(path, date, filenameFormat)`,
+  which strips the `{date}-` prefix; the blank-slug HHmmss fallback (with or
+  without a `-N` collision suffix) yields `""` and renders no title. Posts
+  without a real slug keep the date+tags-only header (no regression to §M.1).
 
 ## 3. Out of scope
 
@@ -661,7 +666,9 @@ grid (§F) is unaffected.
 | File | Change |
 |---|---|
 | `styles.css` | §L: make `.thino-files-main` a height-bound flex column (`display:flex; flex-direction:column; height:100%; min-height:0`); add `min-height:0` to `.thino-files-list`. Confirm `.thino-files-sidebar` stays `position:sticky; top:0` (or set `align-self:flex-start`) so it holds. §M: `.thino-files-card-body` collapsed variant with `max-height` clamp (~8em) + `overflow:hidden` + bottom fade; `.thino-files-card-body--expanded` removes the clamp; `.thino-files-card-toggle` style for Show more/less. |
-| `src/PostCard.ts` | Add a collapse class on the body by default; after `renderBody()` measure `scrollHeight` vs clamp and, if overflowing, render a **Show more/Show less** toggle that flips the expanded class + label. Recompute on every `renderBody()` (covers task toggle + edit exit). Suppress clamp in `enterEditMode()`. |
+| `src/PostCard.ts` | Add a collapse class on the body by default; after `renderBody()` measure `scrollHeight` vs clamp and, if overflowing, render a **Show more/Show less** toggle that flips the expanded class + label. Recompute on every `renderBody()` (covers task toggle + edit exit). Suppress clamp in `enterEditMode()`. Render the slug title in the header via `postSlug` (§M.9). |
+| `src/fileManager.ts` | Add pure `postSlug(path, isoDate, dateFormat)` — strips the date prefix, returns the slug verbatim, `""` for the HHmmss fallback (§M.9). |
+| `tests/postSlug.test.ts` | Unit-test `postSlug`: verbatim slug, no humanizing, custom date format, HHmmss fallback → "", collision-suffix cases. |
 | `src/TimelineView.ts` | No data-flow change; layout fix lives in CSS. |
 
 No new runtime dependencies.

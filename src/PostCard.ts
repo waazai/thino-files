@@ -1,5 +1,5 @@
 import { type App, type Component, MarkdownRenderer, setIcon } from "obsidian";
-import { formatDate, type PostFlags, toggleTaskInBody } from "./fileManager";
+import { formatDate, type PostFlags, postSlug, toggleTaskInBody } from "./fileManager";
 import type { PostScope } from "./filter";
 import { type AttachFn, bindAttachments } from "./media";
 import type { Post, ThinoFilesSettings } from "./types";
@@ -41,6 +41,11 @@ export class PostCard {
     this.el = parent.createDiv({ cls: "thino-files-card" });
 
     const header = this.el.createDiv({ cls: "thino-files-card-header" });
+    // Title = the filename slug, verbatim; omitted when there's no real slug (§M.9).
+    const title = postSlug(post.path, post.date, ctx.settings.filenameDateFormat);
+    if (title) {
+      header.createSpan({ cls: "thino-files-card-title", text: title });
+    }
     header.createSpan({
       cls: "thino-files-card-date",
       text: this.displayDate(),

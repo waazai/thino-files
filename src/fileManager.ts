@@ -51,6 +51,27 @@ export function buildFilename(
   return candidate;
 }
 
+/**
+ * Recover the user's slug from a post path for the card title (AC §M.9).
+ * Strips the `{date}-` prefix (reproduced from the post's own date + the
+ * configured filename format), then returns the remainder verbatim — no
+ * humanizing. The blank-slug fallback (HHmmss, optionally with a `-N`
+ * collision suffix) is treated as "no slug" and returns "".
+ */
+export function postSlug(
+  path: string,
+  isoDate: string,
+  dateFormat = "YYYY-MM-DD"
+): string {
+  const base = (path.split("/").pop() ?? "").replace(/\.md$/i, "");
+  const d = new Date(isoDate);
+  const prefix = isNaN(d.getTime()) ? "" : `${formatDate(d, dateFormat)}-`;
+  const rest = prefix && base.startsWith(prefix) ? base.slice(prefix.length) : base;
+  // HHmmss fallback (6 digits, maybe a collision suffix) means no real slug.
+  if (/^\d{6}(-\d+)?$/.test(rest)) return "";
+  return rest;
+}
+
 /** Comma-separated tag input → clean tag list (leading # stripped). */
 export function parseTagInput(input: string): string[] {
   return input

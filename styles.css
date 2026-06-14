@@ -148,6 +148,15 @@
   margin-bottom: var(--size-2-2);
 }
 
+.thino-files-card-title {
+  font-weight: var(--font-bold);
+  font-size: var(--font-ui-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50%;
+}
+
 .thino-files-card-date {
   color: var(--text-muted);
   font-size: var(--font-ui-small);
