@@ -72,7 +72,7 @@ filter to `<50` results → no sentinel.
 
 ## Phase 3 — Reset vs preserve semantics
 
-### T3 — Render-state semantics + scroll-offset restore  `[ ]`
+### T3 — Render-state semantics + scroll-offset restore  `[x]`
 Covers AC O.6, O.7, O.8.
 
 - [ ] Give render a mode: `renderList(opts?: { preserve?: boolean })`.

@@ -24,7 +24,7 @@ import { FilterBar } from "./FilterBar";
 import { matchPost, matchScope, parseQuery, type PostQuery, type PostScope } from "./filter";
 import { extractImageEmbeds } from "./media-grid";
 import type ThinoFilesPlugin from "./main";
-import { growReveal, hasMore, initialReveal } from "./pagination";
+import { clampReveal, growReveal, hasMore, initialReveal } from "./pagination";
 import { PostCard } from "./PostCard";
 import { Sidebar } from "./Sidebar";
 import type { Post } from "./types";
@@ -173,7 +173,7 @@ export class TimelineView extends ItemView {
   async refresh(): Promise<void> {
     this.posts = await listPosts(this.vault, this.plugin.settings);
     this.updateSidebar();
-    this.renderList();
+    this.renderList({ preserve: true });
   }
 
   /** Push the current posts + active-source state into the sidebar. */
@@ -186,7 +186,15 @@ export class TimelineView extends ItemView {
     );
   }
 
-  private renderList(): void {
+  /**
+   * @param opts.preserve §2.O: a *data* refresh (disk watcher, source switch,
+   * composer post, card flag change) keeps the user where they are — it holds
+   * the revealed count (AC O.7) and restores the scroll offset. The default
+   * (filter / scope / day change) resets to the newest batch at the top (O.6).
+   */
+  private renderList(opts: { preserve?: boolean } = {}): void {
+    const prevScroll = this.listEl.scrollTop;
+    const prevRevealed = this.revealed;
     this.removeSentinel();
     this.listEl.empty();
     const inScope = this.posts.filter((p) => matchScope(p, this.listScope));
@@ -213,11 +221,15 @@ export class TimelineView extends ItemView {
     }
     // §2.O: render the newest batch only; the sentinel reveals more on scroll.
     this.visiblePosts = visible;
-    this.revealed = initialReveal(visible.length);
+    this.revealed = opts.preserve
+      ? clampReveal(prevRevealed, visible.length)
+      : initialReveal(visible.length);
     for (const post of visible.slice(0, this.revealed)) {
       this.createCard(post, this.listEl);
     }
     this.installSentinel();
+    // Resets jump to top (O.6); preserves keep the prior scroll offset (O.7).
+    this.listEl.scrollTop = opts.preserve ? prevScroll : 0;
   }
 
   /**
@@ -330,8 +342,9 @@ export class TimelineView extends ItemView {
         const i = this.posts.findIndex((x) => x.path === p.path);
         if (i >= 0) this.posts[i] = saved;
         // The card likely left the current scope — re-render list + counts.
+        // Preserve scroll/reveal so acting on a deep card doesn't jump to top.
         this.updateSidebar();
-        this.renderList();
+        this.renderList({ preserve: true });
         return saved;
       },
       deleteForever: async (p) => {
