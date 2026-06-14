@@ -100,10 +100,12 @@ post stays visible at top.
 
 ## Phase 4 — Ship-readiness
 
-### T4 — Full verification matrix + green gate  `[ ]`
+### T4 — Full verification matrix + green gate  `[~]`
 Covers SPEC §6.
 
-- [ ] Run the §6 manual matrix (a–h) on a 400+-post dev vault:
+- [x] Automatable gate: `npm test` (133 passed) + `npm run build` green; strict
+  typecheck; all `./pagination` imports used; no dangling imports.
+- [ ] **(User — needs the Obsidian app)** Run the §6 manual matrix (a–h) on a 400+-post dev vault:
   a) ~50 initial, responsive; b) scroll appends to end then stops;
   c) filtered `<50` → no sentinel; d) filter/scope/day reset to top;
   e) archive/delete deep card keeps position; f) new post at top;
