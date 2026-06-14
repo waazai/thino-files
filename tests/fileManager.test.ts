@@ -4,16 +4,22 @@ import { buildFilename, formatDate, sanitizeSlug } from "../src/fileManager";
 const d = new Date(2026, 5, 12, 14, 30, 22);
 
 describe("sanitizeSlug", () => {
-  it("lowercases and converts spaces to hyphens", () => {
-    expect(sanitizeSlug("My First Thought")).toBe("my-first-thought");
+  it("keeps case and spaces verbatim", () => {
+    expect(sanitizeSlug("My First Thought")).toBe("My First Thought");
   });
 
-  it("strips illegal filename characters", () => {
-    expect(sanitizeSlug('a/b\\c:d*e?f"g<h>i|j#k^l[m]n')).toBe("abcdefghijklmn");
+  it("strips only the illegal filename characters, keeping the rest", () => {
+    // Legal chars (#, ^, [, ], internal punctuation) survive; only
+    // \ / : * ? " < > | and control chars are removed.
+    expect(sanitizeSlug('a/b\\c:d*e?f"g<h>i|j#k^l[m]n')).toBe("abcdefghij#k^l[m]n");
   });
 
-  it("collapses repeated separators and trims edge hyphens", () => {
-    expect(sanitizeSlug("  hello -- world  ")).toBe("hello-world");
+  it("preserves unicode and internal spacing", () => {
+    expect(sanitizeSlug("café — naïve")).toBe("café — naïve");
+  });
+
+  it("trims only leading/trailing whitespace", () => {
+    expect(sanitizeSlug("  hello  world  ")).toBe("hello  world");
   });
 
   it("returns empty string for blank or all-illegal input", () => {
@@ -39,9 +45,9 @@ describe("formatDate", () => {
 describe("buildFilename", () => {
   const never = () => false;
 
-  it("joins date prefix and sanitized slug", () => {
+  it("joins date prefix and verbatim slug", () => {
     expect(buildFilename(d, "My First Thought", never)).toBe(
-      "2026-06-12-my-first-thought.md"
+      "2026-06-12-My First Thought.md"
     );
   });
 

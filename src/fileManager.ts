@@ -8,17 +8,15 @@ import type { Post, ThinoFilesSettings } from "./types";
 const pad = (n: number): string => String(n).padStart(2, "0");
 
 /**
- * Filename-safe slug: spaces → '-', strip illegal characters, collapse
- * repeated hyphens, trim edge hyphens, lowercase.
+ * Keep the user's slug verbatim, normalizing silently only where a filename
+ * demands it: strip characters illegal in a filename (`\ / : * ? " < > |` and
+ * ASCII control chars) and trim leading/trailing whitespace. Case, internal
+ * spaces, punctuation, and Unicode are preserved. Returns "" when nothing
+ * usable remains, so callers apply their blank-slug fallback.
  */
 export function sanitizeSlug(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9\-_]/g, "")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
+  // eslint-disable-next-line no-control-regex
+  return input.replace(/[\\/:*?"<>|\x00-\x1f]/g, "").trim();
 }
 
 /** Tiny token formatter supporting YYYY, MM, DD, HH, mm, ss. */

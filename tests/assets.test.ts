@@ -11,9 +11,9 @@ import { DEFAULT_SETTINGS } from "../src/types";
 const noon = new Date(2026, 5, 12, 14, 30, 22);
 
 describe("buildAssetFilename (AC §B.2)", () => {
-  it("prefixes timestamp and sanitizes the original name", () => {
+  it("prefixes timestamp, keeps the name verbatim, lowercases the ext", () => {
     expect(buildAssetFilename(noon, "My Shot (1).PNG", () => false)).toBe(
-      "20260612-143022-my-shot-1.png"
+      "20260612-143022-My Shot (1).png"
     );
   });
 
@@ -28,7 +28,8 @@ describe("buildAssetFilename (AC §B.2)", () => {
   });
 
   it("falls back to 'file' for names that sanitize to nothing", () => {
-    expect(buildAssetFilename(noon, "###.png", () => false)).toBe(
+    // `?` is illegal and stripped, leaving an empty stem → "file".
+    expect(buildAssetFilename(noon, "???.png", () => false)).toBe(
       "20260612-143022-file.png"
     );
   });

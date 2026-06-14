@@ -649,11 +649,40 @@ grid (§F) is unaffected.
   body re-renders.
 - **AC M.8** Collapse state does not persist across `refresh()` / re-render;
   cards re-collapse by default (acceptable — no settings, no storage).
+- **AC M.8a** The overflow measurement (`scrollHeight > clamp`, AC M.3) must run
+  against a **laid-out** element. When `applyCollapse()` runs while the leaf is
+  detached / `display:none` (the **jump to source file → back** case), both
+  `scrollHeight` and `clientHeight` read `0`, the body is wrongly judged
+  non-overflowing, the clamp is dropped, and the card renders **fully expanded
+  with no toggle**. A `0`-height read must **not** clear the collapse: treat
+  unmeasurable layout as "keep clamped, re-measure when visible" (e.g. defer the
+  check to the view's reveal/resize) so a card never spuriously expands on
+  return. Re-collapse-by-default (M.8) still holds — the card returns collapsed,
+  with its **Show more** toggle present when it overflows.
 - **AC M.9** The header shows a **title** = the filename slug, *verbatim* (no
   humanizing). The slug is recovered by `postSlug(path, date, filenameFormat)`,
   which strips the `{date}-` prefix; the blank-slug HHmmss fallback (with or
   without a `-N` collision suffix) yields `""` and renders no title. Posts
   without a real slug keep the date+tags-only header (no regression to §M.1).
+
+### §2.N Verbatim slug sanitization
+
+Applies to `sanitizeSlug` and therefore to post filenames (`buildFilename`) and
+asset filenames (`buildAssetFilename`).
+
+- **AC N.1** The user's slug is kept **verbatim** — case, internal spaces,
+  punctuation, and Unicode are preserved exactly as typed. Normalization is
+  silent (no prompt, no warning).
+- **AC N.2** Only characters **illegal in a filename** are removed:
+  `\ / : * ? " < > |` and ASCII control chars (`0x00`–`0x1F`). Leading/trailing
+  whitespace is trimmed. Nothing else is touched — no lowercasing, no
+  space→`-`, no hyphen collapsing.
+- **AC N.3** If sanitization leaves an empty string, the caller applies its
+  blank fallback — `HHmmss` for `buildFilename`, `"file"` for
+  `buildAssetFilename`.
+- **AC N.4** Example: slug `Idea: A/B test` → file
+  `2026-06-12-Idea AB test.md`; `My Shot (1).PNG` →
+  `…-My Shot (1).png` (ext lowercased per existing asset rule, stem verbatim).
 
 ## 3. Out of scope
 

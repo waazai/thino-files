@@ -30,7 +30,7 @@ describe("createPost", () => {
       tags: ["idea"],
       now,
     });
-    expect(path).toBe("thino/2026-06-12-my-first-thought.md");
+    expect(path).toBe("thino/2026-06-12-My First Thought.md");
     expect(files.size).toBe(1);
     const content = files.get(path)!;
     expect(content).toContain("date: 2026-06-12T14:30:22");
