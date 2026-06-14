@@ -736,3 +736,137 @@ TypeScript strict. The clamp/overflow logic is DOM-only and lives in `PostCard`.
 - Open a file or do file I/O on inline expand.
 - Clip or hide the card header.
 - Add runtime dependencies.
+
+---
+
+# SPEC — Thino Files v0.7.0
+
+Spec-driven development document. Performance/scalability increment over the
+shipped timeline — **no existing behavior, data, or file format may regress**.
+New scope: the post list renders **incrementally** (infinite scroll, 50 cards
+per batch) instead of building a DOM card for every post up front, fixing the
+multi-second freeze observed at ~422 posts. Builds on §L (the list is the only
+scroll region) and §M (collapsible cards) — appended cards inherit both.
+
+Scoped via clarifying questions; the decisions below — **infinite scroll, batch
+size 50, fixed constant (no setting)** — are final.
+
+---
+
+## 1. Objective
+
+- **Users**: Obsidian users with a long Thino Files timeline (hundreds+ posts).
+- **Goal**: keep the view responsive at scale. Today `renderList()` clears the
+  list and synchronously builds a `PostCard` for **every** visible post on every
+  render (`TimelineView.ts` §181–208); at ~422 posts this rebuilds hundreds of
+  DOM subtrees at once and freezes the view. Render the newest batch first and
+  reveal more as the user scrolls, so initial render and every refresh stay
+  cheap regardless of total post count.
+
+## 2. Features & acceptance criteria
+
+### §2.O Incremental timeline rendering (infinite scroll)
+
+Applies to the card-list scopes — **timeline, archived, recycle**. The media
+grid (§F) is unaffected this round (it already lazy-loads images via
+`loading="lazy"`). "Revealed" = the number of cards currently rendered.
+
+- **AC O.1** The list renders at most `BATCH_SIZE = 50` cards initially — the
+  newest 50 in the current scope/filter, preserving the existing
+  date-descending order from `listPosts` (tie-broken by path). No DOM card is
+  built for posts beyond the first batch.
+- **AC O.2** As the user scrolls `.thino-files-list` (the only scroll region,
+  §L) toward the bottom, the next `BATCH_SIZE` cards are appended automatically
+  — no button, no page numbers. Appending **adds** cards after the existing
+  ones; already-rendered cards are **not** rebuilt, so their §M inline
+  expand/collapse state is preserved.
+- **AC O.3** Batches keep revealing until all visible posts are shown; once the
+  last post is rendered, loading stops (the sentinel + observer are removed).
+- **AC O.4** Detection uses an `IntersectionObserver` rooted on
+  `.thino-files-list`, observing a sentinel element placed after the last
+  rendered card, with a `rootMargin` that pre-loads slightly before the true
+  bottom so scrolling stays smooth. No scroll-event polling.
+- **AC O.5** Self-fill: if a batch does not fill the viewport and more posts
+  remain, batches keep appending until the viewport is filled or posts are
+  exhausted — the sentinel never sits permanently visible with content pending.
+- **AC O.6** **Filter / scope / day changes reset to the first batch.** Changing
+  the filter query (FilterBar, `TimelineView.ts` §124), switching scope
+  (§86), or selecting/clearing a calendar day (§90) re-renders from the top
+  showing the newest `BATCH_SIZE`, scrolls the list to top, and installs a fresh
+  observer.
+- **AC O.7** **Data refreshes preserve the revealed count.** `refresh()` (disk
+  watcher, source-folder switch, composer post — §168) and a card-action
+  `renderList()` (archive/delete/restore via `setFlags` — §269) re-render
+  showing `clampReveal(revealed, total)` = `min(max(revealed, BATCH_SIZE),
+  total)` cards, and restore the prior list scroll offset — so a background
+  change does not yank a deep-scrolled user back to the top.
+- **AC O.8** Posting a new note (composer → `refresh()`) still shows it at the
+  top of the list (AC §2.1); the preserve-count rule (O.7) never hides it.
+- **AC O.9** Empty states (no posts / no matches) are unchanged. With fewer
+  visible posts than `BATCH_SIZE`, there is no sentinel and no observer.
+- **AC O.10** The `IntersectionObserver` is disconnected in `onClose()` and the
+  previous one is disconnected on every full re-render — no observers leak
+  across re-renders or view closes.
+- **AC O.11** `BATCH_SIZE` is a fixed module constant — no setting, no UI, no
+  persisted reveal state — consistent with the project's lean settings surface.
+
+## 3. Out of scope
+
+- No pagination controls / page numbers (infinite scroll chosen).
+- No DOM virtualization/recycling — revealed cards stay in the DOM (bounded by
+  how far the user scrolls, not by total post count up front). Variable +
+  expandable card heights (§M) make windowing fragile; deferred.
+- No batching of the media grid (already image-lazy); no "posts per page"
+  setting; no persisted scroll position across sessions.
+- No change to data model, sort order, filtering, scopes, or file format.
+
+## 4. Implementation outline
+
+| File | Change |
+|---|---|
+| `src/pagination.ts` (new) | Pure helpers + `export const BATCH_SIZE = 50`: `initialReveal(total)` = `min(total, BATCH_SIZE)`; `growReveal(revealed, total)` = `min(revealed + BATCH_SIZE, total)`; `clampReveal(revealed, total)` = `min(max(revealed, BATCH_SIZE), total)` (O.7 preserve path); `hasMore(revealed, total)` = `revealed < total`. No `obsidian` import. |
+| `tests/pagination.test.ts` (new) | Unit-test the helpers: total `<` / `=` / `>` batch; `growReveal` stops at `total`; `clampReveal` stays `≥ BATCH_SIZE` and `≤ total`; `hasMore` boundaries (0, mid, `=total`). |
+| `src/TimelineView.ts` | Add `revealed` count + `observer?: IntersectionObserver`. `renderList(opts?: { preserve?: boolean })`: reset paths set `revealed = initialReveal(total)`, preserve paths set `revealed = clampReveal(revealed, total)` and save/restore `listEl.scrollTop`; render the first `revealed` visible posts; if `hasMore`, append a `.thino-files-sentinel` and (re)create the observer (disconnecting the old one). New `appendBatch()`: `revealed = growReveal(...)`, create only the new slice's cards **before** the sentinel (no full rebuild), self-fill (O.5), remove sentinel + disconnect when `!hasMore`. Pass `{ preserve: true }` from §168/§269 callers; reset (default) from §86/§90/§124. Disconnect observer in `onClose()`. |
+| `styles.css` | `.thino-files-sentinel` — minimal-height marker (optional subtle "loading…" affordance); must not affect §L/§M layout. |
+
+`createCard()` is unchanged, so appended cards inherit §M collapse and all card
+actions automatically. No new runtime dependencies.
+
+## 5. Code style
+
+Unchanged: pure logic (`pagination.ts`) free of `obsidian` and unit-tested; DOM
+via Obsidian helpers with the `thino-files-` prefix; comments cite `AC §O.x`;
+TypeScript strict. The sentinel/observer logic is DOM-only and lives in
+`TimelineView`.
+
+## 6. Testing strategy
+
+- **Pure**: `tests/pagination.test.ts` covers `initialReveal` / `growReveal` /
+  `clampReveal` / `hasMore` per AC §4.
+- **DOM/observer**: the `obsidian` test mock has no layout engine, scroll
+  metrics, or `IntersectionObserver`, so these are **verified manually in a dev
+  vault with 400+ posts**: (a) initial render shows ~50 cards and the view is
+  responsive (no multi-second freeze); (b) scrolling appends in batches until
+  exhausted, then stops; (c) a filtered result `< 50` shows no sentinel;
+  (d) changing filter/scope/day resets to the top with the newest 50;
+  (e) archiving/deleting a deep-scrolled card keeps scroll position (no jump to
+  top); (f) posting a new note shows it at the top; (g) the §M expand state of
+  already-shown cards survives later appends; (h) closing/reopening the view
+  repeatedly leaks no observers.
+- `npm test` + `npm run build` green; strict typecheck; no dangling imports.
+
+## 7. Boundaries
+
+**Always**
+- Preserve date-descending order, file format, the §L pinned-chrome scroll, and
+  §M collapse on every rendered card — **including appended batches**.
+- Keep new-post-at-top (AC §2.1) and the debounced disk-watcher behavior.
+
+**Ask first**
+- Switching to DOM virtualization, adding a "Posts per page" setting, or
+  paginating the media grid (all deferred this round).
+
+**Never**
+- Render all posts up front again.
+- Add runtime dependencies.
+- Leak `IntersectionObserver`s across re-renders or view closes.
