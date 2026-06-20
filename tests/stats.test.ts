@@ -11,7 +11,6 @@ import type { Post } from "../src/types";
 const post = (date: string, tags: string[] = []): Post => ({
   path: `thino/${date}.md`,
   date,
-  updated: date,
   tags,
   body: "x",
 });

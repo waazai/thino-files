@@ -14,7 +14,6 @@ function fakeVault(paths: string[]): ListableVault {
     cachedRead: async (f) =>
       serializePost({
         date: "2026-06-01T10:00:00",
-        updated: "2026-06-01T10:00:00",
         tags: [],
         body: f.path,
       }),

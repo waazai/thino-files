@@ -1,3 +1,4 @@
+import { Platform } from "obsidian";
 import { parseTagInput } from "./fileManager";
 import { type AttachFn, bindAttachments } from "./media";
 
@@ -66,7 +67,9 @@ export class Composer {
       this.slugEl.value = "";
       this.tagsEl.value = "";
       this.errorEl.hide();
-      this.bodyEl.focus();
+      // Desktop refocuses the body for rapid-fire posting; on mobile this would
+      // re-summon the virtual keyboard after every post, so skip it (P3).
+      if (!Platform.isMobile) this.bodyEl.focus();
     } catch (err) {
       this.showError(err instanceof Error ? err.message : String(err));
     }

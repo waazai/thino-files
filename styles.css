@@ -195,6 +195,14 @@
   opacity: 1;
 }
 
+/* P1: touch devices have no persistent hover, so the hover-gated actions would
+   never appear. Where the primary pointer can't hover, show them always. */
+@media (hover: none) {
+  .thino-files-card-actions {
+    opacity: 1;
+  }
+}
+
 .thino-files-card-action {
   background: transparent;
   box-shadow: none;
@@ -261,19 +269,6 @@
   text-decoration: underline;
 }
 
-/* Inline editor */
-.thino-files-card-editor {
-  width: 100%;
-  resize: vertical;
-  font-family: var(--font-text);
-}
-
-.thino-files-card-editor-buttons {
-  display: flex;
-  gap: var(--size-2-2);
-  margin-top: var(--size-2-2);
-}
-
 /* Delete confirmation */
 .thino-files-card-confirm {
   display: flex;
@@ -330,6 +325,24 @@
 
 .thino-files-layout.sidebar-hidden .thino-files-sidebar {
   display: none;
+}
+
+/* P7: on a narrow pane the sidebar is auto-hidden, but the toggle can re-open it.
+   A fixed 220px inline sidebar would crush the timeline to an unreadable sliver,
+   so float it as an overlay over the timeline instead of squeezing it. */
+@media (max-width: 600px) {
+  .thino-files-layout:not(.sidebar-hidden) .thino-files-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    max-height: 100%;
+    overflow-y: auto;
+    padding: var(--size-4-2);
+    background: var(--background-primary);
+    box-shadow: var(--shadow-s);
+    border-radius: var(--radius-m);
+  }
 }
 
 /* Height-bound flex column so only the list scrolls; the composer, toolbar, and

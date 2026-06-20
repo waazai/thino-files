@@ -31,9 +31,9 @@ types only, so any module that imports it at runtime cannot load under Vitest.
 ### Pure modules — keep `obsidian` imports type-only, unit-tested
 - `types.ts` — `Post` / `PostFrontmatter` / `ThinoFilesSettings` + `DEFAULT_SETTINGS`.
 - `frontmatter.ts` — `serializePost` / `parsePost`, `toLocalIso`. Hand-rolled
-  for the fixed schema (`date`, `updated`, `tags`, optional `archived`/`deleted`)
-  so it stays dependency-free. Flags are serialized **only when true** so legacy
-  files round-trip byte-identical.
+  for the fixed schema (`date`, `tags`, optional `archived`/`deleted`) so it stays
+  dependency-free. There is no `updated` field (a legacy one is ignored on parse).
+  Flags are serialized **only when true** so legacy files round-trip minimally.
 - `fileManager.ts` — filename/date helpers (`sanitizeSlug`, `buildFilename`,
   `formatDate`, `insertAtCursor`, `overflowState`) **and** vault-bound CRUD that
   goes through a narrow `VaultLike` interface so tests can supply an in-memory fake.
@@ -86,7 +86,6 @@ module and CRUD path has a matching spec (`frontmatter`, `fileManager`, `filter`
 ```markdown
 ---
 date: 2026-06-12T14:30:22      # creation, set once
-updated: 2026-06-12T14:30:22   # bumped on every edit
 tags: [idea, todo]             # tags live only in frontmatter
 archived: true                 # optional — absent = active
 deleted: true                  # optional — shows only in the recycle bin
@@ -94,6 +93,13 @@ deleted: true                  # optional — shows only in the recycle bin
 
 The post body in plain GFM.
 ```
+
+There is no `updated` frontmatter field. "Last edited" is the file's mtime —
+edits happen in Obsidian's native editor (the card's pencil opens the source
+file; there is no inline editor), so the plugin can't reliably stamp a timestamp
+without fighting the editor. A legacy `updated:` line is ignored on parse and
+dropped the next time the plugin rewrites the file (checkbox toggle / archive /
+delete).
 
 ### Code layout
 

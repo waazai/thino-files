@@ -1,8 +1,6 @@
 export interface PostFrontmatter {
   /** ISO 8601 creation timestamp — set once, never changed. */
   date: string;
-  /** ISO 8601 timestamp, bumped on every edit. */
-  updated: string;
   /** Tags live only in frontmatter; body is pure content. */
   tags: string[];
   /** Soft-archive flag (SPEC §2.C); absent = active. */

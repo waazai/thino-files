@@ -60,6 +60,8 @@ export class TimelineView extends ItemView {
   private revealed = 0;
   private observer: IntersectionObserver | null = null;
   private sentinelEl: HTMLElement | null = null;
+  /** Live cards in the DOM, so a resize can re-measure their overflow clamp (A2). */
+  private cards: PostCard[] = [];
 
   constructor(leaf: WorkspaceLeaf, private plugin: ThinoFilesPlugin) {
     super(leaf);
@@ -150,6 +152,9 @@ export class TimelineView extends ItemView {
       this.sidebarHidden = narrow;
       this.applySidebarVisibility();
     }
+    // A resize also fires on a live system-font-scale change (notably Android);
+    // re-measure each card so newly-overflowing bodies gain a Show more toggle (A2).
+    for (const card of this.cards) card.remeasure();
   }
 
   private applySidebarVisibility(): void {
@@ -197,6 +202,7 @@ export class TimelineView extends ItemView {
     const prevRevealed = this.revealed;
     this.removeSentinel();
     this.listEl.empty();
+    this.cards = [];
     const inScope = this.posts.filter((p) => matchScope(p, this.listScope));
     const visible = inScope.filter(
       (p) =>
@@ -323,7 +329,7 @@ export class TimelineView extends ItemView {
   }
 
   private createCard(post: Post, parent: HTMLElement): PostCard {
-    return new PostCard(parent, post, {
+    const card = new PostCard(parent, post, {
       app: this.app,
       settings: this.plugin.settings,
       component: this,
@@ -352,8 +358,9 @@ export class TimelineView extends ItemView {
         this.posts = this.posts.filter((x) => x.path !== p.path);
         this.updateSidebar();
       },
-      attach: (file) => this.attachFile(file),
     });
+    this.cards.push(card);
+    return card;
   }
 
   /** Save a pasted/dropped binary to the assets folder; returns its link. */

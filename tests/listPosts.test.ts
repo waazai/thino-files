@@ -14,7 +14,7 @@ function fakeVault(files: Record<string, string>): ListableVault {
 }
 
 const post = (date: string, body: string, tags: string[] = []) =>
-  serializePost({ date, updated: date, tags, body });
+  serializePost({ date, tags, body });
 
 describe("listPosts", () => {
   it("reads only the configured folder, sorted by date descending (AC §2.2)", async () => {
@@ -43,13 +43,13 @@ describe("listPosts", () => {
     expect(posts.map((p) => p.body)).toEqual(["b", "a"]);
   });
 
-  it("parses tags and updated from frontmatter", async () => {
+  it("parses tags and date from frontmatter", async () => {
     const vault = fakeVault({
       "thino/2026-06-12-a.md": post("2026-06-12T01:00:00", "a", ["idea", "x"]),
     });
     const [p] = await listPosts(vault, DEFAULT_SETTINGS);
     expect(p.tags).toEqual(["idea", "x"]);
-    expect(p.updated).toBe("2026-06-12T01:00:00");
+    expect(p.date).toBe("2026-06-12T01:00:00");
   });
 
   it("sorts frontmatter-less files last instead of crashing", async () => {

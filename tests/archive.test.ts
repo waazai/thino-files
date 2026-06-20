@@ -11,7 +11,6 @@ import type { Post } from "../src/types";
 const base: Post = {
   path: "thino/2026-06-12-a.md",
   date: "2026-06-12T10:00:00",
-  updated: "2026-06-12T10:00:00",
   tags: ["idea"],
   body: "Hello",
 };
@@ -39,13 +38,11 @@ describe("frontmatter flags (AC §C.1)", () => {
 });
 
 describe("buildFlaggedContent", () => {
-  const now = new Date(2026, 5, 13, 9, 30, 0);
-
-  it("sets a flag, bumps updated, preserves date/tags/body", () => {
-    const content = buildFlaggedContent(base, { archived: true }, now);
+  it("sets a flag, preserves date/tags/body, writes no updated field", () => {
+    const content = buildFlaggedContent(base, { archived: true });
     const parsed = parsePost(content);
     expect(parsed.archived).toBe(true);
-    expect(parsed.updated).toBe("2026-06-13T09:30:00");
+    expect(content).not.toContain("updated:");
     expect(parsed.date).toBe(base.date);
     expect(parsed.tags).toEqual(base.tags);
     expect(parsed.body).toBe(base.body);
@@ -53,7 +50,7 @@ describe("buildFlaggedContent", () => {
 
   it("clears a flag while keeping the other", () => {
     const post: Post = { ...base, archived: true, deleted: true };
-    const parsed = parsePost(buildFlaggedContent(post, { deleted: false }, now));
+    const parsed = parsePost(buildFlaggedContent(post, { deleted: false }));
     expect(parsed.deleted).toBeUndefined();
     expect(parsed.archived).toBe(true);
   });
@@ -68,11 +65,10 @@ describe("setPostFlags", () => {
         writes.push(data);
       },
     };
-    const result = await setPostFlags(vault, base, { deleted: true }, new Date(2026, 5, 13));
+    const result = await setPostFlags(vault, base, { deleted: true });
     expect(writes).toHaveLength(1);
     expect(parsePost(writes[0]).deleted).toBe(true);
     expect(result.deleted).toBe(true);
-    expect(result.updated).toBe("2026-06-13T00:00:00");
   });
 
   it("drops cleared flags from the returned post (absent = active)", async () => {

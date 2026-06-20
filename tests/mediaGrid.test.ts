@@ -48,7 +48,6 @@ describe('matchScope("media")', () => {
   const post = (over: Partial<Post> = {}): Post => ({
     path: "thino/a.md",
     date: "2026-06-12T10:00:00",
-    updated: "2026-06-12T10:00:00",
     tags: [],
     body: "",
     ...over,

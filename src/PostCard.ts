@@ -7,7 +7,6 @@ import {
   toggleTaskInBody,
 } from "./fileManager";
 import type { PostScope } from "./filter";
-import { type AttachFn, bindAttachments } from "./media";
 import type { Post, ThinoFilesSettings } from "./types";
 
 export interface PostCardContext {
@@ -25,8 +24,6 @@ export interface PostCardContext {
   setFlags: (post: Post, flags: PostFlags) => Promise<Post>;
   /** Permanently trash the file — recycle bin only (AC §C.4). */
   deleteForever: (post: Post) => Promise<void>;
-  /** Save a pasted/dropped file, returning its Markdown link (AC §B.2). */
-  attach?: AttachFn;
 }
 
 /** One timeline card: date chip, tag pills, GFM-rendered body, action icons. */
@@ -87,6 +84,18 @@ export class PostCard {
     const d = new Date(this.post.date);
     if (!this.post.date || isNaN(d.getTime())) return this.post.date;
     return formatDate(d, this.ctx.settings.dateDisplayFormat);
+  }
+
+  /**
+   * Re-evaluate the overflow clamp against the current layout (A2). The pane's
+   * system font scale can change live (notably on Android), which reflows the
+   * body: a card that fit at 100% can overflow at 200%, and without a re-measure
+   * it would render truncated by the fade with no Show more toggle. Driven by the
+   * view's `onResize`.
+   */
+  remeasure(): void {
+    if (!this.bodyEl.isConnected) return;
+    this.applyCollapse();
   }
 
   protected async renderBody(): Promise<void> {
@@ -190,11 +199,12 @@ export class PostCard {
   /** Action set per scope: timeline edits/archives, trash restores/destroys. */
   private addScopeActions(): void {
     const { scope } = this.ctx;
+    // Edit opens the post's source file in the native editor — the inline
+    // editor was dropped (cramped, and its unsaved state was lost to the mobile
+    // back button). One pencil action, no separate file-symlink "open" icon.
+    const openSource = (): void => void this.ctx.openPost(this.post);
     if (scope === "timeline") {
-      this.addAction("pencil", "Edit", () => this.enterEditMode());
-      this.addAction("file-symlink", "Open source file", () =>
-        void this.ctx.openPost(this.post)
-      );
+      this.addAction("pencil", "Open source file to edit", openSource);
       this.addAction("archive", "Archive", () =>
         void this.ctx.setFlags(this.post, { archived: true })
       );
@@ -207,9 +217,7 @@ export class PostCard {
       this.addAction("archive-restore", "Unarchive", () =>
         void this.ctx.setFlags(this.post, { archived: false })
       );
-      this.addAction("file-symlink", "Open source file", () =>
-        void this.ctx.openPost(this.post)
-      );
+      this.addAction("pencil", "Open source file to edit", openSource);
       this.addAction("trash-2", "Delete", () =>
         this.confirm("Move this note to the recycle bin?", "Delete", () =>
           void this.ctx.setFlags(this.post, { deleted: true })
@@ -241,44 +249,5 @@ export class PostCard {
       action();
     });
     no.addEventListener("click", () => popover.remove());
-  }
-
-  /** Swap the rendered body for a textarea; save on Cmd/Ctrl+Enter, cancel on Esc. */
-  private enterEditMode(): void {
-    if (this.el.querySelector(".thino-files-card-editor")) return;
-    // The textarea must not be clamped/faded; drop collapse state for edit (§M.7).
-    // renderBody() re-applies it on save/cancel.
-    this.toggleEl?.remove();
-    this.toggleEl = null;
-    this.disconnectLayoutObserver();
-    this.bodyEl.removeClass("is-collapsed");
-    this.bodyEl.empty();
-
-    const editor = this.bodyEl.createEl("textarea", {
-      cls: "thino-files-card-editor",
-      attr: { rows: String(Math.max(4, this.post.body.split("\n").length + 1)) },
-    });
-    editor.value = this.post.body;
-    if (this.ctx.attach) bindAttachments(editor, this.ctx.attach);
-    const buttons = this.bodyEl.createDiv({ cls: "thino-files-card-editor-buttons" });
-    const saveBtn = buttons.createEl("button", { text: "Save", cls: "mod-cta" });
-    const cancelBtn = buttons.createEl("button", { text: "Cancel" });
-
-    const save = async (): Promise<void> => {
-      this.post = await this.ctx.savePost(this.post, editor.value.trim());
-      await this.renderBody();
-    };
-    saveBtn.addEventListener("click", () => void save());
-    cancelBtn.addEventListener("click", () => void this.renderBody());
-    editor.addEventListener("keydown", (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
-        void save();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        void this.renderBody();
-      }
-    });
-    editor.focus();
   }
 }

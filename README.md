@@ -48,3 +48,6 @@ npm test        # vitest unit suite
 ```
 
 For a fast loop, symlink `<vault>/.obsidian/plugins/thino-files` to this repo and reload Obsidian (`Ctrl/Cmd+R`) after changes.
+
+## Known bug
+- File update time only update when updated in thino view (will not update if edit on source file)

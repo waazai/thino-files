@@ -135,10 +135,8 @@ export async function createPost(
     (n) => Boolean(vault.getAbstractFileByPath(toPath(n))),
     settings.filenameDateFormat
   );
-  const iso = toLocalIso(now);
   const content = serializePost({
-    date: iso,
-    updated: iso,
+    date: toLocalIso(now),
     tags: input.tags,
     body: input.body,
   });
@@ -153,11 +151,10 @@ export interface ModifiableVault {
   modify(file: unknown, data: string): Promise<void>;
 }
 
-/** New file content for an edit: body replaced, `updated` bumped, `date`/tags kept. */
-export function buildEditedContent(post: Post, newBody: string, now: Date): string {
+/** New file content for an edit: body replaced, `date`/tags kept. */
+export function buildEditedContent(post: Post, newBody: string): string {
   return serializePost({
     date: post.date,
-    updated: toLocalIso(now),
     tags: post.tags,
     body: newBody,
   });
@@ -166,13 +163,12 @@ export function buildEditedContent(post: Post, newBody: string, now: Date): stri
 export async function updatePost(
   vault: ModifiableVault,
   post: Post,
-  newBody: string,
-  now: Date = new Date()
+  newBody: string
 ): Promise<Post> {
   const file = vault.getAbstractFileByPath(post.path);
   if (!file) throw new Error(`File not found: ${post.path}`);
-  await vault.modify(file, buildEditedContent(post, newBody, now));
-  return { ...post, body: newBody, updated: toLocalIso(now) };
+  await vault.modify(file, buildEditedContent(post, newBody));
+  return { ...post, body: newBody };
 }
 
 /** Soft-state flags edited by archive/restore/delete actions (SPEC §2.C). */
@@ -181,11 +177,10 @@ export interface PostFlags {
   deleted?: boolean;
 }
 
-/** New file content with flags applied — body/date/tags kept, `updated` bumped. */
-export function buildFlaggedContent(post: Post, flags: PostFlags, now: Date): string {
+/** New file content with flags applied — body/date/tags kept. */
+export function buildFlaggedContent(post: Post, flags: PostFlags): string {
   return serializePost({
     date: post.date,
-    updated: toLocalIso(now),
     tags: post.tags,
     archived: flags.archived ?? post.archived,
     deleted: flags.deleted ?? post.deleted,
@@ -200,13 +195,12 @@ export function buildFlaggedContent(post: Post, flags: PostFlags, now: Date): st
 export async function setPostFlags(
   vault: ModifiableVault,
   post: Post,
-  flags: PostFlags,
-  now: Date = new Date()
+  flags: PostFlags
 ): Promise<Post> {
   const file = vault.getAbstractFileByPath(post.path);
   if (!file) throw new Error(`File not found: ${post.path}`);
-  await vault.modify(file, buildFlaggedContent(post, flags, now));
-  const result: Post = { ...post, ...flags, updated: toLocalIso(now) };
+  await vault.modify(file, buildFlaggedContent(post, flags));
+  const result: Post = { ...post, ...flags };
   if (!result.archived) delete result.archived;
   if (!result.deleted) delete result.deleted;
   return result;
