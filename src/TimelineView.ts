@@ -107,6 +107,15 @@ export class TimelineView extends ItemView {
     });
     const main = this.layoutEl.createDiv({ cls: "thino-files-main" });
 
+    // On a narrow screen the sidebar opens as an overlay that covers the toggle
+    // button, so tapping the toggle can't close it again. This backdrop (shown
+    // only in the narrow + open state via CSS) dismisses it on an outside tap.
+    const backdrop = this.layoutEl.createDiv({ cls: "thino-files-sidebar-backdrop" });
+    backdrop.addEventListener("click", () => {
+      this.sidebarHidden = true;
+      this.applySidebarVisibility();
+    });
+
     new Composer(
       main,
       async (input) => {
