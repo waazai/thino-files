@@ -1,6 +1,6 @@
 {
   "name": "thino-files",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Twitter-style timeline for Obsidian where every post is its own Markdown file with YAML frontmatter",
   "main": "main.js",
   "scripts": {
@@ -11,7 +11,11 @@
     "release": "git push --follow-tags && ./release.sh",
     "ship": "npm version patch && npm run release"
   },
-  "keywords": ["obsidian", "plugin", "timeline"],
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "timeline"
+  ],
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.14.0",
