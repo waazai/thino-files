@@ -33,7 +33,7 @@ describe("createPost", () => {
     expect(path).toBe("thino/2026-06-12-My First Thought.md");
     expect(files.size).toBe(1);
     const content = files.get(path)!;
-    expect(content).toContain("date: 2026-06-12T14:30:22");
+    expect(content).toContain("created: 2026-06-12T14:30:22");
     expect(content).not.toContain("updated:");
     expect(content).toContain("tags: [idea]");
     expect(content).toContain("My first thought");

@@ -5,17 +5,17 @@ import type { Post } from "../src/types";
 
 const post: Post = {
   path: "thino/2026-06-10-a.md",
-  date: "2026-06-10T08:00:00",
+  created: "2026-06-10T08:00:00",
   tags: ["idea"],
   body: "original body",
 };
 
 describe("buildEditedContent", () => {
-  it("rewrites body while preserving date and tags, without an updated field (AC §2.3)", () => {
+  it("rewrites body while preserving created and tags, without an updated field (AC §2.3)", () => {
     const content = buildEditedContent(post, "new body");
     const parsed = parsePost(content);
     expect(parsed.body).toBe("new body");
-    expect(parsed.date).toBe("2026-06-10T08:00:00");
+    expect(parsed.created).toBe("2026-06-10T08:00:00");
     expect(content).not.toContain("updated:");
     expect(parsed.tags).toEqual(["idea"]);
   });

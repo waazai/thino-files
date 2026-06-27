@@ -48,7 +48,7 @@ export function matchPost(post: Post, query: PostQuery): boolean {
   const postTags = post.tags.map((t) => t.toLowerCase());
   if (!query.tags.every((tag) => postTags.includes(tag))) return false;
 
-  const day = post.date.slice(0, 10);
+  const day = post.created.slice(0, 10);
   if (query.from && day < query.from) return false;
   if (query.to && day > query.to) return false;
 

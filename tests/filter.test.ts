@@ -4,7 +4,7 @@ import type { Post } from "../src/types";
 
 const post = (over: Partial<Post> = {}): Post => ({
   path: "thino/2026-06-12-a.md",
-  date: "2026-06-12T14:30:22",
+  created: "2026-06-12T14:30:22",
   tags: ["idea", "project"],
   body: "Refactor the parser tomorrow",
   ...over,

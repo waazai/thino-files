@@ -17,7 +17,7 @@ const dayKey = (d: Date): string => toLocalIso(d).slice(0, 10);
 export function postsPerDay(posts: Post[]): Map<string, number> {
   const perDay = new Map<string, number>();
   for (const post of posts) {
-    const day = post.date.slice(0, 10);
+    const day = post.created.slice(0, 10);
     if (day.length !== 10) continue;
     perDay.set(day, (perDay.get(day) ?? 0) + 1);
   }

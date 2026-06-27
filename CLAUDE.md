@@ -31,7 +31,7 @@ types only, so any module that imports it at runtime cannot load under Vitest.
 ### Pure modules — keep `obsidian` imports type-only, unit-tested
 - `types.ts` — `Post` / `PostFrontmatter` / `ThinoFilesSettings` + `DEFAULT_SETTINGS`.
 - `frontmatter.ts` — `serializePost` / `parsePost`, `toLocalIso`. Hand-rolled
-  for the fixed schema (`date`, `tags`, optional `archived`/`deleted`) so it stays
+  for the fixed schema (`created`, `tags`, optional `archived`/`deleted`) so it stays
   dependency-free. There is no `updated` field (a legacy one is ignored on parse).
   Flags are serialized **only when true** so legacy files round-trip minimally.
 - `fileManager.ts` — filename/date helpers (`sanitizeSlug`, `buildFilename`,
@@ -103,7 +103,7 @@ module and CRUD path has a matching spec (`frontmatter`, `fileManager`, `filter`
 
 ```markdown
 ---
-date: 2026-06-12T14:30:22      # creation, set once
+created: 2026-06-12T14:30:22   # creation, set once
 tags: [idea, todo]             # tags live only in frontmatter
 archived: true                 # optional — absent = active
 deleted: true                  # optional — shows only in the recycle bin
@@ -111,6 +111,12 @@ deleted: true                  # optional — shows only in the recycle bin
 
 The post body in plain GFM.
 ```
+
+The creation timestamp is serialized as `created:`. On parse the value is
+resolved with a fallback chain — `created:` → legacy `date:` → the first other
+frontmatter property whose value looks like a date — so imported/legacy files
+keep their timestamp; whatever is found is rewritten as `created:` the next time
+the plugin saves the file. In code the field is `Post.created` (a string).
 
 There is no `updated` frontmatter field. "Last edited" is the file's mtime —
 edits happen in Obsidian's native editor (the card's pencil opens the source

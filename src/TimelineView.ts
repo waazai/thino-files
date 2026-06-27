@@ -241,7 +241,7 @@ export class TimelineView extends ItemView {
       inScope.filter(
         (p) =>
           matchPost(p, this.query) &&
-          (!this.selectedDay || p.date.slice(0, 10) === this.selectedDay)
+          (!this.selectedDay || p.created.slice(0, 10) === this.selectedDay)
       ),
       this.plugin.settings.sortOrder
     );
@@ -342,7 +342,7 @@ export class TimelineView extends ItemView {
         if (!(file instanceof TFile)) continue;
         const tile = grid.createDiv({
           cls: "thino-files-media-tile",
-          attr: { title: this.displayDate(post.date) },
+          attr: { title: this.displayDate(post.created) },
         });
         tile.createEl("img", {
           attr: { src: this.vault.getResourcePath(file), loading: "lazy" },

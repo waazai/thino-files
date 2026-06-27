@@ -1,6 +1,8 @@
 export interface PostFrontmatter {
-  /** ISO 8601 creation timestamp — set once, never changed. */
-  date: string;
+  /** ISO 8601 creation timestamp — set once, never changed. Serialized as
+   * `created:`; legacy `date:` files (and any other date-valued property) are
+   * read into this on parse. */
+  created: string;
   /** Tags live only in frontmatter; body is pure content. */
   tags: string[];
   /** Soft-archive flag (SPEC §2.C); absent = active. */

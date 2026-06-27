@@ -13,7 +13,7 @@ function fakeVault(paths: string[]): ListableVault {
     getMarkdownFiles: () => paths.map((path) => ({ path })),
     cachedRead: async (f) =>
       serializePost({
-        date: "2026-06-01T10:00:00",
+        created: "2026-06-01T10:00:00",
         tags: [],
         body: f.path,
       }),

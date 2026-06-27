@@ -10,7 +10,7 @@ import type { Post } from "../src/types";
 
 const base: Post = {
   path: "thino/2026-06-12-a.md",
-  date: "2026-06-12T10:00:00",
+  created: "2026-06-12T10:00:00",
   tags: ["idea"],
   body: "Hello",
 };
@@ -38,12 +38,12 @@ describe("frontmatter flags (AC §C.1)", () => {
 });
 
 describe("buildFlaggedContent", () => {
-  it("sets a flag, preserves date/tags/body, writes no updated field", () => {
+  it("sets a flag, preserves created/tags/body, writes no updated field", () => {
     const content = buildFlaggedContent(base, { archived: true });
     const parsed = parsePost(content);
     expect(parsed.archived).toBe(true);
     expect(content).not.toContain("updated:");
-    expect(parsed.date).toBe(base.date);
+    expect(parsed.created).toBe(base.created);
     expect(parsed.tags).toEqual(base.tags);
     expect(parsed.body).toBe(base.body);
   });

@@ -47,7 +47,7 @@ export class PostCard {
 
     const header = this.el.createDiv({ cls: "thino-files-card-header" });
     // Title = the filename slug, verbatim; omitted when there's no real slug (§M.9).
-    const title = postSlug(post.path, post.date, ctx.settings.filenameDateFormat);
+    const title = postSlug(post.path, post.created, ctx.settings.filenameDateFormat);
     if (title) {
       header.createSpan({ cls: "thino-files-card-title", text: title });
     }
@@ -81,8 +81,8 @@ export class PostCard {
   }
 
   private displayDate(): string {
-    const d = new Date(this.post.date);
-    if (!this.post.date || isNaN(d.getTime())) return this.post.date;
+    const d = new Date(this.post.created);
+    if (!this.post.created || isNaN(d.getTime())) return this.post.created;
     return formatDate(d, this.ctx.settings.dateDisplayFormat);
   }
 

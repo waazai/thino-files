@@ -17,7 +17,7 @@ An [Obsidian](https://obsidian.md) plugin, forked from [Quorafind/Obsidian-Thino
 
 ```markdown
 ---
-date: 2026-06-12T14:30:22
+created: 2026-06-12T14:30:22
 tags: [idea, project]
 ---
 
@@ -26,7 +26,7 @@ Post body goes here. Full **GFM** supported.
 - [ ] A task item
 ```
 
-- `date` — creation timestamp, set once. "Last edited" is the file's mtime (no `updated` field).
+- `created` — creation timestamp, set once. "Last edited" is the file's mtime (no `updated` field). Older files using `date:` are still read (and any other date-valued frontmatter property is used as a fallback); the value is rewritten as `created:` the next time the post is saved.
 - `tags` — live only in frontmatter; inline `#hashtags` in the body are treated as plain content.
 - `archived` / `deleted` — optional `true` flags set by the archive/delete actions; absent means active, so v0.1.0 files need no migration.
 

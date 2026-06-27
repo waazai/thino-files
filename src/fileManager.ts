@@ -136,7 +136,7 @@ export async function createPost(
     settings.filenameDateFormat
   );
   const content = serializePost({
-    date: toLocalIso(now),
+    created: toLocalIso(now),
     tags: input.tags,
     body: input.body,
   });
@@ -151,10 +151,10 @@ export interface ModifiableVault {
   modify(file: unknown, data: string): Promise<void>;
 }
 
-/** New file content for an edit: body replaced, `date`/tags kept. */
+/** New file content for an edit: body replaced, `created`/tags kept. */
 export function buildEditedContent(post: Post, newBody: string): string {
   return serializePost({
-    date: post.date,
+    created: post.created,
     tags: post.tags,
     body: newBody,
   });
@@ -177,10 +177,10 @@ export interface PostFlags {
   deleted?: boolean;
 }
 
-/** New file content with flags applied — body/date/tags kept. */
+/** New file content with flags applied — body/created/tags kept. */
 export function buildFlaggedContent(post: Post, flags: PostFlags): string {
   return serializePost({
-    date: post.date,
+    created: post.created,
     tags: post.tags,
     archived: flags.archived ?? post.archived,
     deleted: flags.deleted ?? post.deleted,
@@ -301,10 +301,12 @@ export async function listPosts(
  */
 export function sortPosts(posts: Post[], order: SortOrder = "desc"): Post[] {
   return posts.sort((a, b) => {
-    if (a.date === b.date) return a.path.localeCompare(b.path);
-    if (!a.date) return 1;
-    if (!b.date) return -1;
-    return order === "asc" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
+    if (a.created === b.created) return a.path.localeCompare(b.path);
+    if (!a.created) return 1;
+    if (!b.created) return -1;
+    return order === "asc"
+      ? a.created.localeCompare(b.created)
+      : b.created.localeCompare(a.created);
   });
 }
 
