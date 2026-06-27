@@ -4,14 +4,17 @@ An [Obsidian](https://obsidian.md) plugin, forked from [Quorafind/Obsidian-Thino
 
 ## Features
 
-- Each post is a Markdown file.
-- Switch between folders to display timelines. 
+- Supports desktop, ios and android.  
+- Each post is a Markdown file, easy import as long as the file has the follow format (see file format below).
+- Switch between folders to display different timelines (add a folder from setting). 
 - Toggle timeline order — newest-first (default) or oldest-first.
 - Search on text or tag.
 - Collapse if post too long.
-- Some sid bar stats.
+- Some side bar stats.
 - Media grid view. 
-- Recycle bin. 
+- Recycle bin.   
+![](img/IMG_2686.png)
+![](img/IMG_2685.png)
 
 ## File format (If you want to import existing files)
 
