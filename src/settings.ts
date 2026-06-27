@@ -72,6 +72,12 @@ export function mergeSettings(stored: unknown): ThinoFilesSettings {
   if (!merged.sourceFolders.includes(merged.postsFolder)) {
     merged.postsFolder = merged.sourceFolders[0];
   }
+
+  // sortOrder is a string union — the scalar typeof check above lets any string
+  // through, so clamp an unknown value back to the default.
+  if (merged.sortOrder !== "asc" && merged.sortOrder !== "desc") {
+    merged.sortOrder = DEFAULT_SETTINGS.sortOrder;
+  }
   return merged;
 }
 

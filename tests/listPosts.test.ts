@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { listPosts, type ListableVault } from "../src/fileManager";
+import { listPosts, sortPosts, type ListableVault } from "../src/fileManager";
 import { serializePost } from "../src/frontmatter";
-import { DEFAULT_SETTINGS } from "../src/types";
+import { DEFAULT_SETTINGS, type Post } from "../src/types";
 
 function fakeVault(files: Record<string, string>): ListableVault {
   return {
@@ -64,5 +64,50 @@ describe("listPosts", () => {
   it("returns [] for an empty or missing folder", async () => {
     const posts = await listPosts(fakeVault({}), DEFAULT_SETTINGS);
     expect(posts).toEqual([]);
+  });
+
+  it("honors settings.sortOrder = asc (oldest first)", async () => {
+    const vault = fakeVault({
+      "thino/2026-06-10-old.md": post("2026-06-10T08:00:00", "old"),
+      "thino/2026-06-12-new.md": post("2026-06-12T09:00:00", "new"),
+      "thino/2026-06-11-mid.md": post("2026-06-11T10:00:00", "mid"),
+    });
+    const posts = await listPosts(vault, { ...DEFAULT_SETTINGS, sortOrder: "asc" });
+    expect(posts.map((p) => p.body)).toEqual(["old", "mid", "new"]);
+  });
+});
+
+describe("sortPosts", () => {
+  const p = (date: string, path: string): Post => ({ date, path, tags: [], body: "" });
+
+  it("defaults to newest-first, undated last, path-stable ties", () => {
+    const sorted = sortPosts([
+      p("", "thino/z.md"),
+      p("2026-06-10T08:00:00", "thino/b.md"),
+      p("2026-06-12T09:00:00", "thino/a.md"),
+      p("2026-06-10T08:00:00", "thino/a.md"),
+    ]);
+    expect(sorted.map((x) => x.path)).toEqual([
+      "thino/a.md", // newest
+      "thino/a.md", // same date as b → path tiebreak
+      "thino/b.md",
+      "thino/z.md", // undated sinks to bottom
+    ]);
+  });
+
+  it("reverses to oldest-first for asc, but keeps undated at the bottom", () => {
+    const sorted = sortPosts(
+      [
+        p("", "thino/z.md"),
+        p("2026-06-12T09:00:00", "thino/new.md"),
+        p("2026-06-10T08:00:00", "thino/old.md"),
+      ],
+      "asc"
+    );
+    expect(sorted.map((x) => x.path)).toEqual([
+      "thino/old.md",
+      "thino/new.md",
+      "thino/z.md", // undated still last regardless of order
+    ]);
   });
 });

@@ -285,7 +285,6 @@
 .thino-files-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--size-2-3);
   margin-bottom: var(--size-2-3);
 }

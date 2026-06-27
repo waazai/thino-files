@@ -74,6 +74,24 @@ types only, so any module that imports it at runtime cannot load under Vitest.
 - Settings operate on the single **active** `postsFolder` (one of `sourceFolders`),
   so all CRUD/listing/watching keeps its single-folder shape.
 
+## Mobile / platform notes
+
+`isDesktopOnly: false` — the plugin runs on iPadOS (WebKit) and Android (Chromium
+WebView). The problems found in the old mobile audits are **fixed**: card actions
+show on touch (`@media (hover: none)` in `styles.css`), post-submit focus is
+skipped on mobile (`!Platform.isMobile` guard in `Composer.ts`), the narrow-width
+sidebar floats as an overlay instead of squeezing the timeline (`@media
+(max-width: 600px)`), and the back-button / clipped-textarea issues went away when
+the inline editor was removed (Edit now opens the source file).
+
+Remaining known limitations (low priority, intentionally unaddressed):
+- **Media attach on iOS** has no working path — `dataTransfer.files` /
+  `clipboardData.files` are empty in WKWebView and there is no `<input type=file>`
+  fallback. Android 12+ paste works. (`media.ts`.)
+- The delete-confirm popover has no dismiss-on-outside-tap (Cancel is always reachable).
+- The virtual keyboard / system-font-scale can trigger extra overflow recompute
+  and (Android) an early infinite-scroll batch append — cosmetic, not a correctness bug.
+
 ## Tests
 
 Vitest, in `tests/`, with in-memory vault fakes under `tests/mocks/`. Each pure

@@ -74,4 +74,11 @@ describe("mergeSettings", () => {
     const merged = mergeSettings({ sourceFolders: [], postsFolder: "thino" });
     expect(merged.sourceFolders).toEqual(["thino"]);
   });
+
+  it("keeps a valid sortOrder and clamps an invalid one to the default", () => {
+    expect(mergeSettings({ sortOrder: "asc" }).sortOrder).toBe("asc");
+    expect(mergeSettings({ sortOrder: "desc" }).sortOrder).toBe("desc");
+    expect(mergeSettings({ sortOrder: "sideways" }).sortOrder).toBe("desc");
+    expect(mergeSettings({ sortOrder: 3 }).sortOrder).toBe("desc");
+  });
 });

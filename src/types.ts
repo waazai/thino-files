@@ -30,7 +30,12 @@ export interface ThinoFilesSettings {
   requireSlug: boolean;
   openInNewPane: boolean;
   dateDisplayFormat: string;
+  /** Timeline order by post `date`: newest-first (`desc`) or oldest-first (`asc`). */
+  sortOrder: SortOrder;
 }
+
+/** Timeline ordering by post `date`. */
+export type SortOrder = "asc" | "desc";
 
 export const DEFAULT_SETTINGS: ThinoFilesSettings = {
   postsFolder: "thino",
@@ -40,4 +45,5 @@ export const DEFAULT_SETTINGS: ThinoFilesSettings = {
   requireSlug: false,
   openInNewPane: false,
   dateDisplayFormat: "YYYY-MM-DD HH:mm",
+  sortOrder: "desc",
 };

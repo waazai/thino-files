@@ -3,7 +3,7 @@
 // keep `obsidian` imports type-only so this module loads under vitest.
 
 import { parsePost, serializePost, toLocalIso } from "./frontmatter";
-import type { Post, ThinoFilesSettings } from "./types";
+import type { Post, SortOrder, ThinoFilesSettings } from "./types";
 
 const pad = (n: number): string => String(n).padStart(2, "0");
 
@@ -291,12 +291,20 @@ export async function listPosts(
       return { path: f.path, ...parsePost(raw) };
     })
   );
-  // ISO 8601 strings sort lexicographically; empty dates sink to the bottom.
+  return sortPosts(posts, settings.sortOrder);
+}
+
+/**
+ * Order posts by `date` (newest-first `desc` by default, or oldest-first `asc`).
+ * ISO 8601 strings sort lexicographically; undated posts always sink to the
+ * bottom regardless of order, and same-date ties break by path for stability.
+ */
+export function sortPosts(posts: Post[], order: SortOrder = "desc"): Post[] {
   return posts.sort((a, b) => {
     if (a.date === b.date) return a.path.localeCompare(b.path);
     if (!a.date) return 1;
     if (!b.date) return -1;
-    return b.date.localeCompare(a.date);
+    return order === "asc" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
   });
 }
 

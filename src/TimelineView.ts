@@ -18,6 +18,7 @@ import {
   normalizeFolder,
   saveAsset,
   setPostFlags,
+  sortPosts,
   updatePost,
 } from "./fileManager";
 import { FilterBar } from "./FilterBar";
@@ -53,6 +54,7 @@ export class TimelineView extends ItemView {
   /** Calendar day filter (YYYY-MM-DD), ANDed with the filter bar (AC §A.4). */
   private selectedDay: string | null = null;
   private sidebarHidden = false;
+  private sortBtn!: HTMLButtonElement;
 
   /** §2.O incremental render state. `visiblePosts` is the current filtered list;
    * `revealed` cards of it are in the DOM; the sentinel + observer reveal more. */
@@ -138,6 +140,19 @@ export class TimelineView extends ItemView {
       this.applySidebarVisibility();
     });
 
+    this.sortBtn = toolbar.createEl("button", {
+      cls: "thino-files-sort-toggle clickable-icon",
+    });
+    this.updateSortButton();
+    this.sortBtn.addEventListener("click", () => {
+      this.plugin.settings.sortOrder =
+        this.plugin.settings.sortOrder === "asc" ? "desc" : "asc";
+      void this.plugin.saveSettings();
+      this.updateSortButton();
+      // An order flip starts a fresh batch at the top, so don't preserve scroll.
+      this.renderList();
+    });
+
     new FilterBar(main, (query) => {
       this.query = query;
       this.renderList();
@@ -168,6 +183,15 @@ export class TimelineView extends ItemView {
 
   private applySidebarVisibility(): void {
     this.layoutEl.toggleClass("sidebar-hidden", this.sidebarHidden);
+  }
+
+  /** Reflect the current sort order on the toolbar toggle (icon + tooltip). */
+  private updateSortButton(): void {
+    const asc = this.plugin.settings.sortOrder === "asc";
+    const label = asc ? "Oldest first" : "Newest first";
+    setIcon(this.sortBtn, asc ? "arrow-up-narrow-wide" : "arrow-down-wide-narrow");
+    this.sortBtn.setAttribute("aria-label", label);
+    this.sortBtn.setAttribute("title", label);
   }
 
   /** Reload (debounced) when files in the posts folder change on disk. */
@@ -213,10 +237,13 @@ export class TimelineView extends ItemView {
     this.listEl.empty();
     this.cards = [];
     const inScope = this.posts.filter((p) => matchScope(p, this.listScope));
-    const visible = inScope.filter(
-      (p) =>
-        matchPost(p, this.query) &&
-        (!this.selectedDay || p.date.slice(0, 10) === this.selectedDay)
+    const visible = sortPosts(
+      inScope.filter(
+        (p) =>
+          matchPost(p, this.query) &&
+          (!this.selectedDay || p.date.slice(0, 10) === this.selectedDay)
+      ),
+      this.plugin.settings.sortOrder
     );
     // Media scope renders a grid of embeds, with its own empty state (AC §F.6).
     if (this.listScope === "media") {
